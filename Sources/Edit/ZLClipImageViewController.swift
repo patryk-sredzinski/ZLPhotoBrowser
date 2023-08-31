@@ -54,6 +54,8 @@ class ZLClipImageViewController: UIViewController {
     
     private let clipRatios: [ZLImageClipRatio]
     
+    private let dimClippedAreaDuringAdjustments: Bool
+
     private var editImage: UIImage
     
     /// 初次进入界面时候，裁剪范围
@@ -231,7 +233,9 @@ class ZLClipImageViewController: UIViewController {
     
     init(image: UIImage, editRect: CGRect?, angle: CGFloat = 0, selectRatio: ZLImageClipRatio?) {
         originalImage = image
-        clipRatios = ZLPhotoConfiguration.default().editImageConfiguration.clipRatios
+        let configuration = ZLPhotoConfiguration.default().editImageConfiguration
+        clipRatios = configuration.clipRatios
+        dimClippedAreaDuringAdjustments = configuration.dimClippedAreaDuringAdjustments
         self.editRect = editRect ?? .zero
         self.angle = angle
         let angle = ((Int(angle) % 360) - 360) % 360
@@ -821,6 +825,9 @@ class ZLClipImageViewController: UIViewController {
     
     private func startEditing() {
         cleanTimer()
+        if !dimClippedAreaDuringAdjustments {
+            shadowView.alpha = 0
+        }
         overlayView.isEditing = true
         if rotateBtn.alpha != 0 {
             rotateBtn.layer.removeAllAnimations()
@@ -887,6 +894,9 @@ class ZLClipImageViewController: UIViewController {
             }
             self.rotateBtn.alpha = 1
             self.clipRatioColView.alpha = 1
+            if !self.dimClippedAreaDuringAdjustments {
+                self.shadowView.alpha = 1
+            }
             self.changeClipBoxFrame(newFrame: clipRect)
         }
     }
