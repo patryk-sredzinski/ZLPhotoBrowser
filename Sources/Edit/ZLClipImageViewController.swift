@@ -88,13 +88,13 @@ class ZLClipImageViewController: UIViewController {
         let view = ZLClipShadowView()
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
+        view.isCircle = selectedRatio.isCircle
         return view
     }()
     
     private lazy var overlayView: ZLClipOverlayView = {
         let view = ZLClipOverlayView()
         view.isUserInteractionEnabled = false
-        view.isCircle = selectedRatio.isCircle
         return view
     }()
     
@@ -191,7 +191,7 @@ class ZLClipImageViewController: UIViewController {
     
     private var selectedRatio: ZLImageClipRatio {
         didSet {
-            overlayView.isCircle = selectedRatio.isCircle
+            shadowView.isCircle = selectedRatio.isCircle
         }
     }
     
@@ -1112,6 +1112,12 @@ class ZLImageClipRatioCell: UICollectionViewCell {
 }
 
 class ZLClipShadowView: UIView {
+    var isCircle: Bool = false {
+        didSet {
+            (layer as? ZLClipShadowViewLayer)?.isCircle = isCircle
+        }
+    }
+    
     var clearRect: CGRect = .zero {
         didSet {
             (layer as? ZLClipShadowViewLayer)?.clearRect = clearRect
@@ -1141,14 +1147,21 @@ class ZLClipShadowView: UIView {
         }
         ctx.setFillColor(UIColor(white: 0, alpha: 0.7).cgColor)
         ctx.fill(layer.frame)
-        ctx.clear(shadowLayer.clearRect)
+        if !isCircle {
+            ctx.clear(shadowLayer.clearRect)
+        } else {
+            ctx.setBlendMode(.clear)
+            ctx.setFillColor(UIColor.clear.cgColor)
+            ctx.fillEllipse(in: shadowLayer.clearRect)
+        }
     }
 }
 
 class ZLClipShadowViewLayer: CALayer {
     @NSManaged var clearRect: CGRect
+    @NSManaged var isCircle: Bool
     override class func needsDisplay(forKey key: String) -> Bool {
-        return super.needsDisplay(forKey: key) || key == #keyPath(clearRect)
+        return super.needsDisplay(forKey: key) || key == #keyPath(clearRect) || key == #keyPath(isCircle)
     }
 }
 // MARK: 裁剪网格视图
@@ -1162,23 +1175,7 @@ class ZLClipOverlayView: UIView {
     
     private var horLines: [UIView] = []
     
-    var isCircle = false {
-        didSet {
-            guard oldValue != isCircle else {
-                return
-            }
-            setNeedsDisplay()
-        }
-    }
-    
-    var isEditing = false {
-        didSet {
-            guard isCircle else {
-                return
-            }
-            setNeedsDisplay()
-        }
-    }
+    var isEditing = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1284,46 +1281,11 @@ class ZLClipOverlayView: UIView {
         context?.setLineWidth(1)
         context?.beginPath()
         
-        if isCircle {
-            let center = CGPoint(x: bounds.width / 2, y: bounds.height / 2)
-            let radius = rect.width / 2 - ZLClipOverlayView.cornerLineWidth
-            if !isEditing {
-                // top left
-                context?.move(to: CGPoint(x: ZLClipOverlayView.cornerLineWidth, y: ZLClipOverlayView.cornerLineWidth))
-                context?.addLine(to: CGPoint(x: rect.width / 2, y: rect.origin.y + 3))
-                context?.addArc(center: center, radius: radius, startAngle: .pi * 1.5, endAngle: .pi, clockwise: true)
-                context?.closePath()
-                
-                // top right
-                context?.move(to: CGPoint(x: rect.width - ZLClipOverlayView.cornerLineWidth, y: ZLClipOverlayView.cornerLineWidth))
-                context?.addLine(to: CGPoint(x: rect.width - ZLClipOverlayView.cornerLineWidth, y: rect.height / 2))
-                context?.addArc(center: center, radius: radius, startAngle: 0, endAngle: .pi * 1.5, clockwise: true)
-                context?.closePath()
-                
-                // bottom left
-                context?.move(to: CGPoint(x: ZLClipOverlayView.cornerLineWidth, y: rect.height - ZLClipOverlayView.cornerLineWidth))
-                context?.addLine(to: CGPoint(x: ZLClipOverlayView.cornerLineWidth, y: rect.height / 2))
-                context?.addArc(center: center, radius: radius, startAngle: .pi, endAngle: .pi / 2, clockwise: true)
-                context?.closePath()
-                
-                // bottom right
-                context?.move(to: CGPoint(x: rect.width - ZLClipOverlayView.cornerLineWidth, y: rect.height - ZLClipOverlayView.cornerLineWidth))
-                context?.addLine(to: CGPoint(x: rect.width / 2, y: rect.height - ZLClipOverlayView.cornerLineWidth))
-                context?.addArc(center: center, radius: radius, startAngle: .pi / 2, endAngle: 0, clockwise: true)
-                context?.closePath()
-                
-                context?.setFillColor(UIColor.black.withAlphaComponent(0.7).cgColor)
-                context?.fillPath()
-            }
-            
-            context?.addArc(center: center, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: false)
-        }
-        
         let circleDiff: CGFloat = (3 - 2 * sqrt(2)) * (rect.width - 2 * ZLClipOverlayView.cornerLineWidth) / 6
         
         var dw: CGFloat = 3
         for i in 0..<4 {
-            let isInnerLine = isCircle && 1...2 ~= i
+            let isInnerLine = 1...2 ~= i
             context?.move(to: CGPoint(x: rect.origin.x + dw, y: ZLClipOverlayView.cornerLineWidth + (isInnerLine ? circleDiff : 0)))
             context?.addLine(to: CGPoint(x: rect.origin.x + dw, y: rect.height - ZLClipOverlayView.cornerLineWidth - (isInnerLine ? circleDiff : 0)))
             dw += (rect.size.width - 6) / 3
@@ -1331,7 +1293,7 @@ class ZLClipOverlayView: UIView {
 
         var dh: CGFloat = 3
         for i in 0..<4 {
-            let isInnerLine = isCircle && 1...2 ~= i
+            let isInnerLine = 1...2 ~= i
             context?.move(to: CGPoint(x: ZLClipOverlayView.cornerLineWidth + (isInnerLine ? circleDiff : 0), y: rect.origin.y + dh))
             context?.addLine(to: CGPoint(x: rect.width - ZLClipOverlayView.cornerLineWidth - (isInnerLine ? circleDiff : 0), y: rect.origin.y + dh))
             dh += (rect.size.height - 6) / 3
