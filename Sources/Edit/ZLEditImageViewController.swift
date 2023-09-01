@@ -1552,33 +1552,8 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
         } else if collectionView == drawColorCollectionView {
             currentDrawColor = drawColors[indexPath.row]
         } else if collectionView == filterCollectionView {
-            currentFilter = ZLPhotoConfiguration.default().editImageConfiguration.filters[indexPath.row]
-            func adjustImage(_ image: UIImage) -> UIImage {
-                guard tools.contains(.adjust), brightness != 0 || contrast != 0 || saturation != 0 else {
-                    return image
-                }
-                return image.zl.adjust(brightness: brightness, contrast: contrast, saturation: saturation) ?? image
-            }
-            if let image = filterImages[currentFilter.name] {
-                editImage = adjustImage(image)
-                editImageWithoutAdjust = image
-            } else {
-                let image = currentFilter.applier?(originalImage) ?? originalImage
-                editImage = adjustImage(image)
-                editImageWithoutAdjust = image
-                filterImages[currentFilter.name] = image
-            }
-            if tools.contains(.mosaic) {
-                generateNewMosaicImageLayer()
-                
-                if mosaicPaths.isEmpty {
-                    imageView.image = editImage
-                } else {
-                    generateNewMosaicImage()
-                }
-            } else {
-                imageView.image = editImage
-            }
+            zlUndoManager.storeAction(.filter(currentFilter))
+            filterDidTap(indexPath)
         } else {
             let tool = adjustTools[indexPath.row]
             if tool != selectedAdjustTool {
@@ -1587,6 +1562,36 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
         }
         collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
         collectionView.reloadData()
+    }
+    
+    private func filterDidTap(_ indexPath: IndexPath) {
+        currentFilter = ZLPhotoConfiguration.default().editImageConfiguration.filters[indexPath.row]
+        func adjustImage(_ image: UIImage) -> UIImage {
+            guard tools.contains(.adjust), brightness != 0 || contrast != 0 || saturation != 0 else {
+                return image
+            }
+            return image.zl.adjust(brightness: brightness, contrast: contrast, saturation: saturation) ?? image
+        }
+        if let image = filterImages[currentFilter.name] {
+            editImage = adjustImage(image)
+            editImageWithoutAdjust = image
+        } else {
+            let image = currentFilter.applier?(originalImage) ?? originalImage
+            editImage = adjustImage(image)
+            editImageWithoutAdjust = image
+            filterImages[currentFilter.name] = image
+        }
+        if tools.contains(.mosaic) {
+            generateNewMosaicImageLayer()
+            
+            if mosaicPaths.isEmpty {
+                imageView.image = editImage
+            } else {
+                generateNewMosaicImage()
+            }
+        } else {
+            imageView.image = editImage
+        }
     }
 }
 
@@ -1706,8 +1711,15 @@ extension ZLEditImageViewController: ZLUndoManagerDelegate {
             }
             mosaicPaths.removeLast()
             generateNewMosaicImage()
-        case .filter:
-            break
+        case .filter(let previousFilter):
+            let filters = ZLPhotoConfiguration.default().editImageConfiguration.filters
+            guard let previousIndex = filters.firstIndex(of: previousFilter) else { return }
+            guard let filterCollectionView else { return }
+            let indexPath = IndexPath(row: previousIndex, section: 0)
+            filterCollectionView.selectItem(at: indexPath, animated: false, scrollPosition: .centeredHorizontally)
+            filterCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+            filterCollectionView.reloadData()
+            filterDidTap(indexPath)
         case .adjustment:
             break
         }

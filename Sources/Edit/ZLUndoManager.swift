@@ -13,7 +13,7 @@ public enum ZLUndoAction {
     case sticker
     case text
     case mosaic
-    case filter
+    case filter(_ previousFilter: ZLFilter)
     case adjustment
 }
 
