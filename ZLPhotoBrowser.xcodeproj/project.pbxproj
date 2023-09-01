@@ -10,6 +10,7 @@
 		2CC461BF2551214700BF96E8 /* ZLAddPhotoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC461BE2551214600BF96E8 /* ZLAddPhotoCell.swift */; };
 		2CC461C22551312C00BF96E8 /* Bool+ZLPhotoBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC461C12551312C00BF96E8 /* Bool+ZLPhotoBrowser.swift */; };
 		3B1C3BE92A9E3E910034D478 /* libswiftAVFoundation.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B1C3BE82A9E3E910034D478 /* libswiftAVFoundation.tbd */; settings = {ATTRIBUTES = (Weak, ); }; };
+		60E1CA0D2AA2030F00B1C3A5 /* ZLUndoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60E1CA0C2AA2030F00B1C3A5 /* ZLUndoManager.swift */; };
 		E406C81C251B4F9B00852E46 /* ZLVideoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E406C81B251B4F9B00852E46 /* ZLVideoManager.swift */; };
 		E40ECF4824FFB8BB00A4D923 /* ZLPhotoBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E40ECF4724FFB8BB00A4D923 /* ZLPhotoBrowser.swift */; };
 		E410177925305C73004C4952 /* ZLFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E410177825305C73004C4952 /* ZLFilter.swift */; };
@@ -77,6 +78,7 @@
 		2CC461BE2551214600BF96E8 /* ZLAddPhotoCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLAddPhotoCell.swift; sourceTree = "<group>"; };
 		2CC461C12551312C00BF96E8 /* Bool+ZLPhotoBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Bool+ZLPhotoBrowser.swift"; sourceTree = "<group>"; };
 		3B1C3BE82A9E3E910034D478 /* libswiftAVFoundation.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libswiftAVFoundation.tbd; path = usr/lib/swift/libswiftAVFoundation.tbd; sourceTree = SDKROOT; };
+		60E1CA0C2AA2030F00B1C3A5 /* ZLUndoManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLUndoManager.swift; sourceTree = "<group>"; };
 		E406C81B251B4F9B00852E46 /* ZLVideoManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLVideoManager.swift; sourceTree = "<group>"; };
 		E40ECF4724FFB8BB00A4D923 /* ZLPhotoBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLPhotoBrowser.swift; sourceTree = "<group>"; };
 		E410177825305C73004C4952 /* ZLFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZLFilter.swift; sourceTree = "<group>"; };
@@ -286,6 +288,7 @@
 				FD047621276B6C8500A93FA3 /* ZLEditToolCells.swift */,
 				FD047628276C7C1C00A93FA3 /* ZLAdjustSlider.swift */,
 				E410177825305C73004C4952 /* ZLFilter.swift */,
+				60E1CA0C2AA2030F00B1C3A5 /* ZLUndoManager.swift */,
 			);
 			path = Edit;
 			sourceTree = "<group>";
@@ -413,6 +416,7 @@
 				FD8FEA6728C8B9B60041374B /* ZLResultModel.swift in Sources */,
 				E4C911DE24E2AA950061DA40 /* ZLAlbumListModel.swift in Sources */,
 				FDA54B8B2876D8CA0077F4FA /* UIFont+ZLPhotoBrowser.swift in Sources */,
+				60E1CA0D2AA2030F00B1C3A5 /* ZLUndoManager.swift in Sources */,
 				E49BD1F724E3CD9E005D7DFB /* ZLThumbnailPhotoCell.swift in Sources */,
 				FD74F6DD29345E4100B7916A /* ZLBaseStickerView.swift in Sources */,
 				E4D06913254C06EB002278C4 /* ZLInputTextViewController.swift in Sources */,

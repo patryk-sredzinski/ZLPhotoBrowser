@@ -49,6 +49,8 @@ public class ZLEditImageModel: NSObject {
     
     public let imageStickers: [(state: ZLImageStickerState, index: Int)]?
     
+    public let undoActions: [ZLUndoAction]
+    
     public init(
         drawPaths: [ZLDrawPath],
         mosaicPaths: [ZLMosaicPath],
@@ -60,7 +62,8 @@ public class ZLEditImageModel: NSObject {
         selectRatio: ZLImageClipRatio?,
         selectFilter: ZLFilter,
         textStickers: [(state: ZLTextStickerState, index: Int)]?,
-        imageStickers: [(state: ZLImageStickerState, index: Int)]?
+        imageStickers: [(state: ZLImageStickerState, index: Int)]?,
+        undoActions: [ZLUndoAction]
     ) {
         self.drawPaths = drawPaths
         self.mosaicPaths = mosaicPaths
@@ -73,6 +76,7 @@ public class ZLEditImageModel: NSObject {
         self.selectFilter = selectFilter
         self.textStickers = textStickers
         self.imageStickers = imageStickers
+        self.undoActions = undoActions
         super.init()
     }
 }
@@ -174,9 +178,9 @@ open class ZLEditImageViewController: UIViewController {
     private var currentDrawColor = ZLPhotoConfiguration.default().editImageConfiguration.defaultDrawColor
     
     private var drawPaths: [ZLDrawPath]
-        
+    
     private var mosaicPaths: [ZLMosaicPath]
-            
+    
     private var hasAdjustedImage = false
     
     // collectionview 中的添加滤镜的小图
@@ -267,7 +271,7 @@ open class ZLEditImageViewController: UIViewController {
         layer.locations = [0, 1]
         return layer
     }()
-     
+    
     // 下方渐变阴影层
     @objc public lazy var bottomShadowView = UIView()
     
@@ -296,9 +300,10 @@ open class ZLEditImageViewController: UIViewController {
         btn.setImage(.zl.getImage("zl_revoke"), for: .normal)
         btn.adjustsImageWhenHighlighted = false
         btn.addTarget(self, action: #selector(revokeBtnClick), for: .touchUpInside)
+        btn.isHidden = zlUndoManager.actions.isEmpty
         return btn
     }()
-        
+    
     @objc public lazy var ashbinView: UIView = {
         let view = UIView()
         view.backgroundColor = .zl.trashCanBackgroundNormalColor
@@ -317,6 +322,12 @@ open class ZLEditImageViewController: UIViewController {
     @objc public var editFinishBlock: ((UIImage, ZLEditImageModel?) -> Void)?
     
     @objc public var cancelEditBlock: (() -> Void)?
+    
+    private lazy var zlUndoManager = {
+        let manager = ZLUndoManager()
+        manager.delegate = self
+        return manager
+    }()
     
     override public var prefersStatusBarHidden: Bool {
         return true
@@ -356,7 +367,8 @@ open class ZLEditImageViewController: UIViewController {
                     selectRatio: ratio,
                     selectFilter: .normal,
                     textStickers: nil,
-                    imageStickers: nil
+                    imageStickers: nil,
+                    undoActions: []
                 )
                 completion?(image.zl.clipImage(angle: angle, editRect: editRect, isCircle: ratio.isCircle) ?? image, m)
             }
@@ -412,6 +424,8 @@ open class ZLEditImageViewController: UIViewController {
         
         super.init(nibName: nil, bundle: nil)
         
+        zlUndoManager.actions = editModel?.undoActions ?? []
+
         if !drawColors.contains(currentDrawColor) {
             currentDrawColor = drawColors.first!
         }
@@ -533,7 +547,7 @@ open class ZLEditImageViewController: UIViewController {
         super.viewWillTransition(to: size, with: coordinator)
         shouldLayout = true
     }
-
+    
     private func generateFilterImages() {
         let size: CGSize
         let ratio = (originalImage.size.width / originalImage.size.height)
@@ -592,7 +606,7 @@ open class ZLEditImageViewController: UIViewController {
         
         containerView.frame = CGRect(x: max(0, (scrollViewSize.width - w) / 2), y: y, width: w, height: h)
         mainScrollView.contentSize = containerView.frame.size
-
+        
         if selectRatio?.isCircle == true {
             let mask = CAShapeLayer()
             let path = UIBezierPath(arcCenter: CGPoint(x: w / 2, y: h / 2), radius: w / 2, startAngle: 0, endAngle: .pi * 2, clockwise: true)
@@ -636,7 +650,7 @@ open class ZLEditImageViewController: UIViewController {
         view.addSubview(topShadowView)
         topShadowView.addSubview(cancelBtn)
         topShadowView.addSubview(revokeBtn)
-
+        
         bottomShadowView.layer.addSublayer(bottomShadowLayer)
         view.addSubview(bottomShadowView)
         bottomShadowView.addSubview(editToolCollectionView)
@@ -952,7 +966,8 @@ open class ZLEditImageViewController: UIViewController {
                 selectRatio: selectRatio,
                 selectFilter: currentFilter,
                 textStickers: textStickers,
-                imageStickers: imageStickers
+                imageStickers: imageStickers,
+                undoActions: zlUndoManager.actions
             )
             
             hud.hide()
@@ -964,21 +979,7 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     @objc private func revokeBtnClick() {
-//        if selectedTool == .draw {
-//            guard !drawPaths.isEmpty else {
-//                return
-//            }
-//            drawPaths.removeLast()
-//            revokeBtn.isEnabled = !drawPaths.isEmpty
-//            drawLine()
-//        } else if selectedTool == .mosaic {
-//            guard !mosaicPaths.isEmpty else {
-//                return
-//            }
-//            mosaicPaths.removeLast()
-//            revokeBtn.isEnabled = !mosaicPaths.isEmpty
-//            generateNewMosaicImage()
-//        }
+        zlUndoManager.undoAction()
     }
     
     @objc private func tapAction(_ tap: UITapGestureRecognizer) {
@@ -1019,6 +1020,9 @@ open class ZLEditImageViewController: UIViewController {
                 drawLine()
             } else if pan.state == .cancelled || pan.state == .ended {
                 setToolView(show: true, delay: 0.5)
+                if !drawPaths.isEmpty {
+                    zlUndoManager.storeAction(.draw)
+                }
             }
         } else if selectedTool == .mosaic {
             let point = pan.location(in: imageView)
@@ -1043,6 +1047,9 @@ open class ZLEditImageViewController: UIViewController {
                 mosaicImageLayerMaskLayer?.path = path?.path.cgPath
             } else if pan.state == .cancelled || pan.state == .ended {
                 setToolView(show: true, delay: 0.5)
+                if !mosaicPaths.isEmpty {
+                    zlUndoManager.storeAction(.mosaic)
+                }
                 generateNewMosaicImage()
             }
         }
@@ -1674,6 +1681,39 @@ extension ZLEditImageViewController: ZLStickerViewDelegate {
     }
 }
 
+extension ZLEditImageViewController: ZLUndoManagerDelegate {
+    func undoManager(_ undoManager: ZLUndoManager, didUpdateActions actionList: [ZLUndoAction]) {
+        revokeBtn.isHidden = actionList.isEmpty
+    }
+    
+    func undoManager(_ undoManager: ZLUndoManager, didUndoAction action: ZLUndoAction) {
+        switch action {
+        case .draw:
+            guard !drawPaths.isEmpty else {
+                return
+            }
+            drawPaths.removeLast()
+            drawLine()
+        case .clip:
+            break
+        case .sticker:
+            break
+        case .text:
+            break
+        case .mosaic:
+            guard !mosaicPaths.isEmpty else {
+                return
+            }
+            mosaicPaths.removeLast()
+            generateNewMosaicImage()
+        case .filter:
+            break
+        case .adjustment:
+            break
+        }
+    }
+}
+
 // MARK: 涂鸦path
 
 public class ZLDrawPath: NSObject {
@@ -1742,7 +1782,7 @@ public class ZLDrawPath: NSObject {
                 let t = CGFloat(i) * (1 / CGFloat(granularity))
                 let tt = t * t
                 let ttt = tt * t
-
+                
                 var point = CGPoint.zero
                 point.x = 0.5 * (
                     2 * p1.x + (p2.x - p0.x) * t +
