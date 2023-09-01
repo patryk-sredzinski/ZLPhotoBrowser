@@ -180,7 +180,7 @@ open class ZLEditImageViewController: UIViewController {
     private var drawPaths: [ZLDrawPath]
     
     private var mosaicPaths: [ZLMosaicPath]
-    
+        
     private let minimumZoomScale = ZLPhotoConfiguration.default().editImageConfiguration.minimumZoomScale
     
     private var hasAdjustedImage = false
@@ -555,7 +555,7 @@ open class ZLEditImageViewController: UIViewController {
         
         let contentRatio = mainScrollView.contentSize.width / mainScrollView.contentSize.height
         let screenRatio = mainScrollView.bounds.size.width / mainScrollView.bounds.size.height
-        if abs(contentRatio - contentRatio) < 0.01 {
+        if abs(contentRatio - screenRatio) < 0.01 {
             mainScrollView.setZoomScale(mainScrollView.minimumZoomScale, animated: true)
         }
     }
