@@ -10,8 +10,7 @@ import Foundation
 public enum ZLUndoAction {
     case draw
     case clip(angle: CGFloat, editRect: CGRect, selectRatio: ZLImageClipRatio?)
-    case sticker
-    case text
+    case sticker(textStickers: [(ZLTextStickerState, Int)], imageStickers: [(ZLImageStickerState, Int)])
     case mosaic
     case filter(_ previousFilter: ZLFilter)
     case adjustment(brightness: Float,

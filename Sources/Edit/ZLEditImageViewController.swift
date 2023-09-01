@@ -1210,6 +1210,7 @@ open class ZLEditImageViewController: UIViewController {
     
     /// Add image sticker
     private func addImageStickerView(_ image: UIImage) {
+        zlUndoManagerStoreStickerChange()
         let scale = mainScrollView.zoomScale
         let size = ZLImageStickerView.calculateSize(image: image, width: view.frame.width)
         let originFrame = getStickerOriginFrame(size)
@@ -1225,6 +1226,7 @@ open class ZLEditImageViewController: UIViewController {
     /// Add text sticker
     private func addTextStickersView(_ text: String, textColor: UIColor, image: UIImage, style: ZLInputTextStyle) {
         guard !text.isEmpty else { return }
+        zlUndoManagerStoreStickerChange()
         let scale = mainScrollView.zoomScale
         let size = ZLTextStickerView.calculateSize(image: image)
         let originFrame = getStickerOriginFrame(size)
@@ -1622,6 +1624,7 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
 
 extension ZLEditImageViewController: ZLStickerViewDelegate {
     func stickerBeginOperation(_ sticker: UIView) {
+        zlUndoManagerStoreStickerChange()
         setToolView(show: false)
         ashbinView.layer.removeAllAnimations()
         ashbinView.isHidden = false
@@ -1717,55 +1720,114 @@ extension ZLEditImageViewController: ZLUndoManagerDelegate {
     func undoManager(_ undoManager: ZLUndoManager, didUndoAction action: ZLUndoAction) {
         switch action {
         case .draw:
-            guard !drawPaths.isEmpty else {
-                return
-            }
-            drawPaths.removeLast()
-            drawLine()
+            zlUndoManagerRestoreDraw()
         case .clip(let angle, let editRect, let selectRatio):
-            clipImage(angle: angle, editFrame: editRect, selectRatio: selectRatio)
-        case .sticker:
-            break
-        case .text:
-            break
+            zlUndoManagerRestoreClip(angle: angle, editRect: editRect, selectRatio: selectRatio)
+        case .sticker(let textStickers, let imageStickers):
+            zlUndoManagerRestoreSticker(textStickers: textStickers, imageStickers: imageStickers)
         case .mosaic:
-            guard !mosaicPaths.isEmpty else {
-                return
-            }
-            mosaicPaths.removeLast()
-            generateNewMosaicImage()
+            zlUndoManagerRestoreMosaic()
         case .filter(let previousFilter):
-            let filters = ZLPhotoConfiguration.default().editImageConfiguration.filters
-            guard let previousIndex = filters.firstIndex(of: previousFilter) else { return }
-            guard let filterCollectionView else { return }
-            let indexPath = IndexPath(row: previousIndex, section: 0)
-            filterCollectionView.selectItem(at: indexPath, animated: false, scrollPosition: .centeredHorizontally)
-            filterCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
-            filterCollectionView.reloadData()
-            filterDidTap(indexPath)
+            zlUndoManagerRestoreFilter(previousFilter: previousFilter)
         case .adjustment(let brightness, let contrast, let saturation):
-            self.brightness = brightness
-            self.contrast = contrast
-            self.saturation = saturation
-            switch selectedAdjustTool {
-            case .brightness:
-                adjustSlider?.value = brightness
-            case .contrast:
-                adjustSlider?.value = contrast
-            case .saturation:
-                adjustSlider?.value = saturation
-            default:
-                break
-            }
-            let resultImage = editImageAdjustRef?.zl.adjust(brightness: brightness,
-                                                            contrast: contrast,
-                                                            saturation: saturation)
-            guard let resultImage = resultImage else {
-                return
-            }
-            editImage = resultImage
-            imageView.image = editImage
+            zlUndoManagerRestoreAdjustment(brightness: brightness, contrast: contrast, saturation: saturation)
         }
+    }
+    
+    private func zlUndoManagerRestoreDraw() {
+        guard !drawPaths.isEmpty else {
+            return
+        }
+        drawPaths.removeLast()
+        drawLine()
+    }
+    
+    private func zlUndoManagerRestoreClip(angle: CGFloat, editRect: CGRect, selectRatio: ZLImageClipRatio?) {
+        clipImage(angle: angle, editFrame: editRect, selectRatio: selectRatio)
+    }
+    
+    private func zlUndoManagerStoreStickerChange() {
+        var textStickers: [(ZLTextStickerState, Int)] = []
+        var imageStickers: [(ZLImageStickerState, Int)] = []
+        for (index, view) in stickersContainer.subviews.enumerated() {
+            if let ts = view as? ZLTextStickerView, !ts.text.isEmpty {
+                textStickers.append((ts.state, index))
+            } else if let ts = view as? ZLImageStickerView {
+                imageStickers.append((ts.state, index))
+            }
+        }
+        zlUndoManager.storeAction(.sticker(textStickers: textStickers, imageStickers: imageStickers))
+    }
+    
+    private func zlUndoManagerRestoreSticker(textStickers: [(state: ZLTextStickerState, index: Int)],
+                                             imageStickers: [(state: ZLImageStickerState, index: Int)]) {
+        let teStic = textStickers
+        let imStic = imageStickers
+        
+        var stickers: [UIView?] = Array(repeating: nil, count: teStic.count + imStic.count)
+        teStic.forEach { cache in
+            let v = ZLTextStickerView(state: cache.state)
+            stickers[cache.index] = v
+        }
+        imStic.forEach { cache in
+            let v = ZLImageStickerView(state: cache.state)
+            stickers[cache.index] = v
+        }
+        self.stickersContainer.subviews.forEach { $0.removeFromSuperview() }
+        self.stickers = stickers.compactMap { $0 }
+        self.stickers.forEach { view in
+            self.stickersContainer.addSubview(view)
+            if let tv = view as? ZLTextStickerView {
+                tv.frame = tv.originFrame
+                self.configTextSticker(tv)
+            } else if let iv = view as? ZLImageStickerView {
+                iv.frame = iv.originFrame
+                self.configImageSticker(iv)
+            }
+        }
+    }
+    
+    private func zlUndoManagerRestoreMosaic() {
+        guard !mosaicPaths.isEmpty else {
+            return
+        }
+        mosaicPaths.removeLast()
+        generateNewMosaicImage()
+    }
+    
+    private func zlUndoManagerRestoreFilter(previousFilter: ZLFilter) {
+        let filters = ZLPhotoConfiguration.default().editImageConfiguration.filters
+        guard let previousIndex = filters.firstIndex(of: previousFilter) else { return }
+        guard let filterCollectionView else { return }
+        let indexPath = IndexPath(row: previousIndex, section: 0)
+        filterCollectionView.selectItem(at: indexPath, animated: false, scrollPosition: .centeredHorizontally)
+        filterCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+        filterCollectionView.reloadData()
+        filterDidTap(indexPath)
+    }
+    
+    private func zlUndoManagerRestoreAdjustment(brightness: Float, contrast: Float, saturation: Float) {
+        self.brightness = brightness
+        self.contrast = contrast
+        self.saturation = saturation
+        switch selectedAdjustTool {
+        case .brightness:
+            adjustSlider?.value = brightness
+        case .contrast:
+            adjustSlider?.value = contrast
+        case .saturation:
+            adjustSlider?.value = saturation
+        default:
+            break
+        }
+        let resultImage = editImageAdjustRef?.zl.adjust(brightness: brightness,
+                                                        contrast: contrast,
+                                                        saturation: saturation)
+        guard let resultImage = resultImage else {
+            return
+        }
+        editImage = resultImage
+        imageView.image = editImage
     }
 }
 
