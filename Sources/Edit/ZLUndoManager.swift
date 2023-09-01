@@ -1,0 +1,41 @@
+//
+//  ZLUndoManager.swift
+//  ZLPhotoBrowser
+//
+//  Created by Patryk Średziński on 01/09/2023.
+//
+
+import Foundation
+
+public enum ZLUndoAction {
+    case draw
+    case clip(angle: CGFloat, editRect: CGRect, selectRatio: ZLImageClipRatio?)
+    case sticker(textStickers: [(ZLTextStickerState, Int)], imageStickers: [(ZLImageStickerState, Int)])
+    case mosaic
+    case filter(_ previousFilter: ZLFilter)
+    case adjustment(brightness: Float,
+                    contrast: Float,
+                    saturation: Float)
+    
+}
+
+protocol ZLUndoManagerDelegate: AnyObject {
+    func undoManager(_ undoManager: ZLUndoManager, didUpdateActions actionList: [ZLUndoAction])
+    func undoManager(_ undoManager: ZLUndoManager, didUndoAction action: ZLUndoAction)
+}
+
+final class ZLUndoManager {
+    var actions = [ZLUndoAction]()
+    weak var delegate: ZLUndoManagerDelegate?
+    
+    func storeAction(_ action: ZLUndoAction) {
+        actions.append(action)
+        delegate?.undoManager(self, didUpdateActions: actions)
+    }
+    
+    func undoAction() {
+        guard let poppedAction = actions.popLast() else { return }
+        delegate?.undoManager(self, didUndoAction: poppedAction)
+        delegate?.undoManager(self, didUpdateActions: actions)
+    }
+}
