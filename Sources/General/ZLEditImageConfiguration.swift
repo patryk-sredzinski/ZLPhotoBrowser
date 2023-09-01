@@ -187,6 +187,12 @@ public class ZLEditImageConfiguration: NSObject {
     
     /// Impact feedback style. Defaults to .medium
     public var impactFeedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle = .medium
+    
+    /// Whether to keep clipped area dimmed during adjustments. Defaults to false
+    public var dimClippedAreaDuringAdjustments = false
+
+    /// Minimum zoom scale, allowing the user to make the edited photo smaller, so it does not overlap top and bottom tools menu. Defaults to 1.0
+    public var minimumZoomScale = 1.0
 }
 
 public extension ZLEditImageConfiguration {
@@ -303,6 +309,12 @@ public extension ZLEditImageConfiguration {
     @discardableResult
     func impactFeedbackStyle(_ style: UIImpactFeedbackGenerator.FeedbackStyle) -> ZLEditImageConfiguration {
         impactFeedbackStyle = style
+        return self
+    }
+
+    @discardableResult
+    func dimClippedAreaDuringAdjustments(_ value: Bool) -> ZLEditImageConfiguration {
+        dimClippedAreaDuringAdjustments = value
         return self
     }
 }
