@@ -187,9 +187,6 @@ public class ZLEditImageConfiguration: NSObject {
     
     /// Impact feedback style. Defaults to .medium
     public var impactFeedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle = .medium
-    
-    /// Whether to support redo in graffiti and mosaic tools. Defaults to false
-    public var canRedo = false
 }
 
 public extension ZLEditImageConfiguration {
@@ -306,12 +303,6 @@ public extension ZLEditImageConfiguration {
     @discardableResult
     func impactFeedbackStyle(_ style: UIImpactFeedbackGenerator.FeedbackStyle) -> ZLEditImageConfiguration {
         impactFeedbackStyle = style
-        return self
-    }
-    
-    @discardableResult
-    func canRedo(_ value: Bool) -> ZLEditImageConfiguration {
-        canRedo = value
         return self
     }
 }
