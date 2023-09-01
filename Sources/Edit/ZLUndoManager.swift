@@ -14,7 +14,10 @@ public enum ZLUndoAction {
     case text
     case mosaic
     case filter(_ previousFilter: ZLFilter)
-    case adjustment
+    case adjustment(brightness: Float,
+                    contrast: Float,
+                    saturation: Float)
+    
 }
 
 protocol ZLUndoManagerDelegate: AnyObject {

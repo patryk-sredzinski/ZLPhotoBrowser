@@ -209,6 +209,12 @@ open class ZLEditImageViewController: UIViewController {
     
     private var saturation: Float
     
+    private var preAdjustBrightness: Float
+    
+    private var preAdjustContrast: Float
+    
+    private var preAdjustSaturation: Float
+
     private lazy var panGes: UIPanGestureRecognizer = {
         let pan = UIPanGestureRecognizer(target: self, action: #selector(drawAction(_:)))
         pan.maximumNumberOfTouches = 1
@@ -412,6 +418,9 @@ open class ZLEditImageViewController: UIViewController {
         brightness = editModel?.brightness ?? 0
         contrast = editModel?.contrast ?? 0
         saturation = editModel?.saturation ?? 0
+        preAdjustBrightness = brightness
+        preAdjustContrast = contrast
+        preAdjustSaturation = saturation
         selectRatio = editModel?.selectRatio
         
         var ts = editConfig.tools
@@ -727,12 +736,21 @@ open class ZLEditImageViewController: UIViewController {
             if let selectedAdjustTool = selectedAdjustTool {
                 changeAdjustTool(selectedAdjustTool)
             }
-            adjustSlider?.beginAdjust = {}
+            adjustSlider?.beginAdjust = { [weak self] in
+                guard let self else { return }
+                self.preAdjustBrightness = self.brightness
+                self.preAdjustContrast = self.contrast
+                self.preAdjustSaturation = self.saturation
+            }
             adjustSlider?.valueChanged = { [weak self] value in
                 self?.adjustValueChanged(value)
             }
             adjustSlider?.endAdjust = { [weak self] in
-                self?.hasAdjustedImage = true
+                guard let self else { return }
+                self.hasAdjustedImage = true
+                self.zlUndoManager.storeAction(.adjustment(brightness: preAdjustBrightness,
+                                                            contrast: preAdjustContrast,
+                                                            saturation: preAdjustSaturation))
             }
             adjustSlider?.isHidden = true
             view.addSubview(adjustSlider!)
@@ -1720,8 +1738,26 @@ extension ZLEditImageViewController: ZLUndoManagerDelegate {
             filterCollectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
             filterCollectionView.reloadData()
             filterDidTap(indexPath)
-        case .adjustment:
-            break
+        case .adjustment(let brightness, let contrast, let saturation):
+            self.brightness = brightness
+            self.contrast = contrast
+            self.saturation = saturation
+            switch selectedAdjustTool {
+            case .brightness:
+                adjustSlider?.value = brightness
+            case .contrast:
+                adjustSlider?.value = contrast
+            case .saturation:
+                adjustSlider?.value = saturation
+            default:
+                break
+            }
+            var resultImage = editImageAdjustRef?.zl.adjust(brightness: brightness, contrast: contrast, saturation: saturation)
+            guard let resultImage = resultImage else {
+                return
+            }
+            editImage = resultImage
+            imageView.image = editImage
         }
     }
 }
