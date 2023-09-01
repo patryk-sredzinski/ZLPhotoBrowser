@@ -295,8 +295,6 @@ open class ZLEditImageViewController: UIViewController {
         btn.setImage(.zl.getImage("zl_revoke_disable"), for: .disabled)
         btn.setImage(.zl.getImage("zl_revoke"), for: .normal)
         btn.adjustsImageWhenHighlighted = false
-        btn.isEnabled = false
-        btn.isHidden = true
         btn.addTarget(self, action: #selector(revokeBtnClick), for: .touchUpInside)
         return btn
     }()
@@ -470,15 +468,16 @@ open class ZLEditImageViewController: UIViewController {
         topShadowLayer.frame = topShadowView.bounds
         if isRTL() {
             cancelBtn.frame = CGRect(x: view.zl.width - 20 - 28, y: 60, width: 28, height: 28)
+            revokeBtn.frame = CGRect(x: 20, y: 60, width: 28, height: 28)
         } else {
             cancelBtn.frame = CGRect(x: 20, y: 60, width: 28, height: 28)
+            revokeBtn.frame = CGRect(x: view.zl.width - 20 - 28, y: 60, width: 28, height: 28)
         }
         
         bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
         bottomShadowLayer.frame = bottomShadowView.bounds
         
-        revokeBtn.frame = CGRect(x: view.zl.width - 15 - 35, y: 40, width: 35, height: 30)
-        drawColorCollectionView?.frame = CGRect(x: 20, y: 30, width: revokeBtn.zl.left - 20 - 10, height: drawColViewH)
+        drawColorCollectionView?.frame = CGRect(x: 20, y: 30, width: view.zl.width - 20, height: drawColViewH)
         
         adjustCollectionView?.frame = CGRect(x: 20, y: 20, width: view.zl.width - 40, height: adjustColViewH)
         if ZLPhotoUIConfiguration.default().adjustSliderType == .vertical {
@@ -636,7 +635,8 @@ open class ZLEditImageViewController: UIViewController {
         topShadowView.layer.addSublayer(topShadowLayer)
         view.addSubview(topShadowView)
         topShadowView.addSubview(cancelBtn)
-        
+        topShadowView.addSubview(revokeBtn)
+
         bottomShadowView.layer.addSublayer(bottomShadowLayer)
         view.addSubview(bottomShadowView)
         bottomShadowView.addSubview(editToolCollectionView)
@@ -724,8 +724,6 @@ open class ZLEditImageViewController: UIViewController {
             view.addSubview(adjustSlider!)
         }
         
-        bottomShadowView.addSubview(revokeBtn)
-
         view.addSubview(ashbinView)
         ashbinView.addSubview(ashbinImgView)
         
@@ -807,8 +805,6 @@ open class ZLEditImageViewController: UIViewController {
             selectedTool = nil
         }
         drawColorCollectionView?.isHidden = !isSelected
-        revokeBtn.isHidden = !isSelected
-        revokeBtn.isEnabled = !drawPaths.isEmpty
         filterCollectionView?.isHidden = true
         adjustCollectionView?.isHidden = true
         adjustSlider?.isHidden = true
@@ -875,8 +871,6 @@ open class ZLEditImageViewController: UIViewController {
         filterCollectionView?.isHidden = true
         adjustCollectionView?.isHidden = true
         adjustSlider?.isHidden = true
-        revokeBtn.isHidden = !isSelected
-        revokeBtn.isEnabled = !mosaicPaths.isEmpty
     }
     
     private func filterBtnClick() {
@@ -888,7 +882,6 @@ open class ZLEditImageViewController: UIViewController {
         }
         
         drawColorCollectionView?.isHidden = true
-        revokeBtn.isHidden = true
         filterCollectionView?.isHidden = !isSelected
         adjustCollectionView?.isHidden = true
         adjustSlider?.isHidden = true
@@ -903,7 +896,6 @@ open class ZLEditImageViewController: UIViewController {
         }
         
         drawColorCollectionView?.isHidden = true
-        revokeBtn.isHidden = true
         filterCollectionView?.isHidden = true
         adjustCollectionView?.isHidden = !isSelected
         adjustSlider?.isHidden = !isSelected
@@ -972,21 +964,21 @@ open class ZLEditImageViewController: UIViewController {
     }
     
     @objc private func revokeBtnClick() {
-        if selectedTool == .draw {
-            guard !drawPaths.isEmpty else {
-                return
-            }
-            drawPaths.removeLast()
-            revokeBtn.isEnabled = !drawPaths.isEmpty
-            drawLine()
-        } else if selectedTool == .mosaic {
-            guard !mosaicPaths.isEmpty else {
-                return
-            }
-            mosaicPaths.removeLast()
-            revokeBtn.isEnabled = !mosaicPaths.isEmpty
-            generateNewMosaicImage()
-        }
+//        if selectedTool == .draw {
+//            guard !drawPaths.isEmpty else {
+//                return
+//            }
+//            drawPaths.removeLast()
+//            revokeBtn.isEnabled = !drawPaths.isEmpty
+//            drawLine()
+//        } else if selectedTool == .mosaic {
+//            guard !mosaicPaths.isEmpty else {
+//                return
+//            }
+//            mosaicPaths.removeLast()
+//            revokeBtn.isEnabled = !mosaicPaths.isEmpty
+//            generateNewMosaicImage()
+//        }
     }
     
     @objc private func tapAction(_ tap: UITapGestureRecognizer) {
@@ -1027,7 +1019,6 @@ open class ZLEditImageViewController: UIViewController {
                 drawLine()
             } else if pan.state == .cancelled || pan.state == .ended {
                 setToolView(show: true, delay: 0.5)
-                revokeBtn.isEnabled = !drawPaths.isEmpty
             }
         } else if selectedTool == .mosaic {
             let point = pan.location(in: imageView)
@@ -1052,7 +1043,6 @@ open class ZLEditImageViewController: UIViewController {
                 mosaicImageLayerMaskLayer?.path = path?.path.cgPath
             } else if pan.state == .cancelled || pan.state == .ended {
                 setToolView(show: true, delay: 0.5)
-                revokeBtn.isEnabled = !mosaicPaths.isEmpty
                 generateNewMosaicImage()
             }
         }
