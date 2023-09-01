@@ -187,10 +187,7 @@ public class ZLEditImageConfiguration: NSObject {
     
     /// Impact feedback style. Defaults to .medium
     public var impactFeedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle = .medium
-    
-    /// Whether to support redo in graffiti and mosaic tools. Defaults to false
-    public var canRedo = false
-    
+
     /// Minimum zoom scale, allowing the user to make the edited photo smaller, so it does not overlap top and bottom tools menu. Defaults to 1.0
     public var minimumZoomScale = 1.0
 
@@ -314,13 +311,7 @@ public extension ZLEditImageConfiguration {
         impactFeedbackStyle = style
         return self
     }
-    
-    @discardableResult
-    func canRedo(_ value: Bool) -> ZLEditImageConfiguration {
-        canRedo = value
-        return self
-    }
-    
+
     @discardableResult
     func dimClippedAreaDuringAdjustments(_ value: Bool) -> ZLEditImageConfiguration {
         dimClippedAreaDuringAdjustments = value
