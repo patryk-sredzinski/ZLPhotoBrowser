@@ -851,17 +851,9 @@ open class ZLEditImageViewController: UIViewController {
         vc.modalPresentationStyle = .fullScreen
         
         vc.clipDoneBlock = { [weak self] angle, editFrame, selectRatio in
-            guard let `self` = self else { return }
-            let oldAngle = self.angle
-            let oldContainerSize = self.stickersContainer.frame.size
-            if self.angle != angle {
-                self.angle = angle
-                self.rotationImageView()
-            }
-            self.editRect = editFrame
-            self.selectRatio = selectRatio
-            self.resetContainerViewFrame()
-            self.reCalculateStickersFrame(oldContainerSize, oldAngle, angle)
+            guard let self else { return }
+            self.zlUndoManager.storeAction(.clip(angle: self.angle, editRect: self.editRect, selectRatio: self.selectRatio))
+            self.clipImage(angle: angle, editFrame: editFrame, selectRatio: selectRatio)
         }
         
         vc.cancelClipBlock = { [weak self] () in
@@ -874,6 +866,19 @@ open class ZLEditImageViewController: UIViewController {
             self.bottomShadowView.alpha = 0
             self.adjustSlider?.alpha = 0
         }
+    }
+    
+    private func clipImage(angle: CGFloat, editFrame: CGRect, selectRatio: ZLImageClipRatio?) {
+        let oldAngle = self.angle
+        let oldContainerSize = self.stickersContainer.frame.size
+        if self.angle != angle {
+            self.angle = angle
+            self.rotationImageView()
+        }
+        self.editRect = editFrame
+        self.selectRatio = selectRatio
+        self.resetContainerViewFrame()
+        self.reCalculateStickersFrame(oldContainerSize, oldAngle, angle)
     }
     
     private func imageStickerBtnClick() {
@@ -1717,8 +1722,8 @@ extension ZLEditImageViewController: ZLUndoManagerDelegate {
             }
             drawPaths.removeLast()
             drawLine()
-        case .clip:
-            break
+        case .clip(let angle, let editRect, let selectRatio):
+            clipImage(angle: angle, editFrame: editRect, selectRatio: selectRatio)
         case .sticker:
             break
         case .text:
@@ -1752,7 +1757,9 @@ extension ZLEditImageViewController: ZLUndoManagerDelegate {
             default:
                 break
             }
-            var resultImage = editImageAdjustRef?.zl.adjust(brightness: brightness, contrast: contrast, saturation: saturation)
+            let resultImage = editImageAdjustRef?.zl.adjust(brightness: brightness,
+                                                            contrast: contrast,
+                                                            saturation: saturation)
             guard let resultImage = resultImage else {
                 return
             }

@@ -9,7 +9,7 @@ import Foundation
 
 public enum ZLUndoAction {
     case draw
-    case clip
+    case clip(angle: CGFloat, editRect: CGRect, selectRatio: ZLImageClipRatio?)
     case sticker
     case text
     case mosaic
