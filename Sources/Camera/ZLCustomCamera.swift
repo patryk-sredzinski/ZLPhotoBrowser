@@ -1145,7 +1145,8 @@ open class ZLCustomCamera: UIViewController {
         guard movieFileOutput.isRecording else {
             return
         }
-        
+        try? AVAudioSession.sharedInstance().setCategory(.playback)
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         movieFileOutput.stopRecording()
     }
     

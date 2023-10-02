@@ -687,6 +687,8 @@ class ZLVideoPreviewCell: ZLPreviewBaseCell {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
             player?.play()
+            try? AVAudioSession.sharedInstance().setCategory(.playback)
+            try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
             playBtn.setImage(nil, for: .normal)
             singleTapBlock?()
         } else {
