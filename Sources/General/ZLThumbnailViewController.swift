@@ -1218,20 +1218,18 @@ extension ZLThumbnailViewController: UICollectionViewDataSource, UICollectionVie
                 }
                 
                 downloadAssetIfNeed(model: model, sender: self) {
-                    if self?.shouldDirectEdit(model) == false {
-                        model.isSelected = true
-                        nav?.arrSelectedModels.append(model)
-                        block(true)
-                        
-                        config.didSelectAsset?(model.asset)
-                        self?.refreshCellIndexAndMaskView()
-                        
-                        if config.maxSelectCount == 1, !config.allowPreviewPhotos {
-                            self?.doneBtnClick()
-                        }
-                        
-                        self?.resetBottomToolBtnStatus()
+                    model.isSelected = true
+                    nav?.arrSelectedModels.append(model)
+                    block(true)
+                    
+                    config.didSelectAsset?(model.asset)
+                    self?.refreshCellIndexAndMaskView()
+                    
+                    if config.maxSelectCount == 1, !config.allowPreviewPhotos {
+                        self?.doneBtnClick()
                     }
+                    
+                    self?.resetBottomToolBtnStatus()
                 }
             } else {
                 model.isSelected = false
@@ -1336,13 +1334,11 @@ extension ZLThumbnailViewController: UICollectionViewDataSource, UICollectionVie
         
         let canEditImage = config.editAfterSelectThumbnailImage &&
             config.allowEditImage &&
-            config.maxSelectCount == 1 &&
             model.type.rawValue < ZLPhotoModel.MediaType.video.rawValue
         
         let canEditVideo = (config.editAfterSelectThumbnailImage &&
             config.allowEditVideo &&
-            model.type == .video &&
-            config.maxSelectCount == 1) ||
+            model.type == .video) ||
             (config.allowEditVideo &&
                 model.type == .video &&
                 !config.allowMixSelect &&
