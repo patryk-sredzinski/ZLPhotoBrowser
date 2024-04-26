@@ -167,7 +167,7 @@ class ZLFilterImageCell: UICollectionViewCell {
 class ZLAdjustToolCell: UICollectionViewCell {
     lazy var nameLabel: UILabel = {
         let label = UILabel()
-        label.frame = CGRect(x: 0, y: bounds.height - 30, width: bounds.width, height: 30)
+        label.frame = CGRect(x: -4, y: bounds.height - 30, width: bounds.width + 8, height: 30)
         label.font = .zl.font(ofSize: 12)
         label.textColor = .white
         label.textAlignment = .center
