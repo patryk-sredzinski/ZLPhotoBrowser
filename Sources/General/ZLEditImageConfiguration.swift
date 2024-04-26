@@ -82,7 +82,7 @@ public class ZLEditImageConfiguration: NSObject {
     public var moreTools: [ZLEditImageConfiguration.EditTool] {
         get {
             if pri_more_tools.isEmpty {
-                return [.more, .filter, .mosaic, .adjust]
+                return [.filter, .mosaic, .adjust, .more]
             } else {
                 return pri_more_tools
             }
