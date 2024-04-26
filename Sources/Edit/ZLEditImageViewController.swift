@@ -621,12 +621,9 @@ open class ZLEditImageViewController: UIViewController {
         if ZLPhotoUIConfiguration.default().shouldCenterTools {
             let editToolLayout = editToolCollectionView.collectionViewLayout as? ZLCollectionViewFlowLayout
             let itemSize = editToolLayout?.itemSize.width ?? 0
-            let itemSpacing = editToolLayout?.minimumInteritemSpacing ?? 0
-            let sideInset = (editToolWidth - CGFloat(tools.count) * (itemSize + itemSpacing) + itemSpacing) / 2.0
-            if sideInset > 0 {
-                editToolCollectionView.contentInset.left = sideInset
-                editToolCollectionView.contentInset.right = sideInset
-            }
+            let itemRequiredSpace = itemSize * CGFloat(tools.count)
+            let availableSpace = editToolWidth - itemRequiredSpace
+            editToolLayout?.minimumLineSpacing = availableSpace / (max(1, CGFloat(tools.count) - 1))
         }
             
         if !drawPaths.isEmpty {
