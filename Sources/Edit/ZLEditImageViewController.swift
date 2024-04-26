@@ -80,7 +80,7 @@ public class ZLEditImageModel: NSObject {
 open class ZLEditImageViewController: UIViewController {
     static let maxDrawLineImageWidth: CGFloat = 600
     
-    static let shadowColorFrom = UIColor.black.withAlphaComponent(0.35).cgColor
+    static let shadowColorFrom = UIColor.black.cgColor
     
     static let shadowColorTo = UIColor.clear.cgColor
     
