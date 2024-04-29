@@ -56,6 +56,9 @@ class ZLEditToolCell: UICollectionViewCell {
             case .more:
                 icon.image = .zl.getImage("zl_more_tools")
                 icon.highlightedImage = .zl.getImage("zl_more_tools")
+            case .back:
+                icon.image = .zl.getImage("zl_retake")
+                icon.highlightedImage = .zl.getImage("zl_retake")
             }
             if let color = UIColor.zl.imageEditorToolIconTintColor {
                 icon.highlightedImage = icon.highlightedImage?

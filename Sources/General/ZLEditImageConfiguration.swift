@@ -75,14 +75,14 @@ public class ZLEditImageConfiguration: NSObject {
         }
     }
     
-    private var pri_more_tools: [ZLEditImageConfiguration.EditTool] = [.more, .filter, .mosaic, .adjust]
+    private var pri_more_tools: [ZLEditImageConfiguration.EditTool] = [.back, .filter, .mosaic, .adjust]
     /// Edit image additional tools. (Default order is draw, clip, imageSticker, textSticker, mosaic, filtter)
     /// Because Objective-C Array can't contain Enum styles, so this property is invalid in Objective-C.
     /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
     public var moreTools: [ZLEditImageConfiguration.EditTool] {
         get {
             if pri_more_tools.isEmpty {
-                return [.filter, .mosaic, .adjust, .more]
+                return [.back, .filter, .mosaic, .adjust]
             } else {
                 return pri_more_tools
             }
@@ -222,6 +222,7 @@ public extension ZLEditImageConfiguration {
         case filter
         case adjust
         case more
+        case back
     }
     
     @objc enum AdjustTool: Int, CaseIterable {

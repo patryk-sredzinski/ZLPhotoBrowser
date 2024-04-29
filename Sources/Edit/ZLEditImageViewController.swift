@@ -1095,6 +1095,11 @@ open class ZLEditImageViewController: UIViewController {
         } else {
             tools = basicTools
         }
+        selectedTool = nil
+        setDrawViews(hidden: true)
+        setFilterViews(hidden: true)
+        setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func setDrawViews(hidden: Bool) {
@@ -1913,7 +1918,7 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                 filterBtnClick()
             case .adjust:
                 adjustBtnClick()
-            case .more:
+            case .more, .back:
                 moreBtnClick()
                 shouldScroll = false
             }
