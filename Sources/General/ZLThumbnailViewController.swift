@@ -643,14 +643,9 @@ class ZLThumbnailViewController: UIViewController {
                         return
                     }
                     
-                    if shouldDirectEdit(m) {
-                        panSelectType = .none
-                        return
-                    } else {
-                        m.isSelected = true
-                        nav.arrSelectedModels.append(m)
-                        config.didSelectAsset?(m.asset)
-                    }
+                    m.isSelected = true
+                    nav.arrSelectedModels.append(m)
+                    config.didSelectAsset?(m.asset)
                 } else if m.isSelected {
                     m.isSelected = false
                     nav.arrSelectedModels.removeAll { $0 == m }
