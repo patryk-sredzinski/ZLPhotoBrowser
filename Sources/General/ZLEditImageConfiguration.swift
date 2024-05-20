@@ -81,11 +81,7 @@ public class ZLEditImageConfiguration: NSObject {
     /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
     public var moreTools: [ZLEditImageConfiguration.EditTool] {
         get {
-            if pri_more_tools.isEmpty {
-                return [.back, .filter, .mosaic, .adjust]
-            } else {
-                return pri_more_tools
-            }
+            return pri_more_tools
         }
         set {
             pri_more_tools = newValue
