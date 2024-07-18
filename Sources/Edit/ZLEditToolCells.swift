@@ -53,6 +53,12 @@ class ZLEditToolCell: UICollectionViewCell {
             case .adjust:
                 icon.image = .zl.getImage("zl_adjust")
                 icon.highlightedImage = .zl.getImage("zl_adjust_selected")
+            case .more:
+                icon.image = .zl.getImage("zl_more_tools")
+                icon.highlightedImage = .zl.getImage("zl_more_tools")
+            case .back:
+                icon.image = .zl.getImage("zl_retake")
+                icon.highlightedImage = .zl.getImage("zl_retake")
             }
             if let color = UIColor.zl.imageEditorToolIconTintColor {
                 icon.highlightedImage = icon.highlightedImage?
@@ -164,7 +170,7 @@ class ZLFilterImageCell: UICollectionViewCell {
 class ZLAdjustToolCell: UICollectionViewCell {
     lazy var nameLabel: UILabel = {
         let label = UILabel()
-        label.frame = CGRect(x: 0, y: bounds.height - 30, width: bounds.width, height: 30)
+        label.frame = CGRect(x: -4, y: bounds.height - 30, width: bounds.width + 8, height: 30)
         label.font = .zl.font(ofSize: 12)
         label.textColor = .white
         label.textAlignment = .center
