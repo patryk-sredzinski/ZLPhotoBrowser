@@ -894,7 +894,7 @@ open class ZLCustomCamera: UIViewController {
         let connection = imageOutput.connection(with: .video)
         connection?.videoOrientation = orientation
         if videoInput?.device.position == .front, connection?.isVideoMirroringSupported == true {
-            connection?.isVideoMirrored = true
+            connection?.isVideoMirrored = ZLPhotoConfiguration.default().cameraConfiguration.isVideoMirrored
         }
         let setting = AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecJPEG])
         if videoInput?.device.hasFlash == true, flashBtn.isSelected {
@@ -1123,7 +1123,7 @@ open class ZLCustomCamera: UIViewController {
         if videoInput?.device.position == .front {
             // 镜像设置
             if connection?.isVideoMirroringSupported == true {
-                connection?.isVideoMirrored = true
+                connection?.isVideoMirrored = ZLPhotoConfiguration.default().cameraConfiguration.isVideoMirrored
             }
             closeTorch()
         } else {
@@ -1259,8 +1259,12 @@ extension ZLCustomCamera: AVCapturePhotoCaptureDelegate {
 
 extension ZLCustomCamera: AVCaptureFileOutputRecordingDelegate {
     public func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        guard recordLongGes?.state != .possible else {
-            finishRecordAndMergeVideo()
+        /*
+         recordLongGes?.state != .possible这个判断是为了防止在按钮上快速拖拽一下，然后手指马上离开
+         此时在adjustCameraFocus方法中已经触发了开始录制，然后在该方法回调前手势结束又触发了停止录制。 这时候要在这里调用finishRecord
+         */
+        guard recordLongGes?.state != .possible || dragStart else {
+            finishRecord()
             return
         }
         
