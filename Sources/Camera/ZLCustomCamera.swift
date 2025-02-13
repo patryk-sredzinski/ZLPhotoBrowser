@@ -535,7 +535,7 @@ open class ZLCustomCamera: UIViewController {
         guard let input = try? AVCaptureDeviceInput(device: camera) else { return }
         
         session.beginConfiguration()
-        
+        session.automaticallyConfiguresApplicationAudioSession = false
         // 相机画面输入流
         videoInput = input
         
