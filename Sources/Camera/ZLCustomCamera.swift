@@ -27,6 +27,7 @@
 import UIKit
 import AVFoundation
 import CoreMotion
+import MediaPlayer
 
 open class ZLCustomCamera: UIViewController {
     public enum Layout {
@@ -256,6 +257,7 @@ open class ZLCustomCamera: UIViewController {
     deinit {
         zl_debugPrint("ZLCustomCamera deinit")
         cleanTimer()
+        UIApplication.shared.endReceivingRemoteControlEvents()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     
@@ -304,6 +306,8 @@ open class ZLCustomCamera: UIViewController {
             do {
                 try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
                 try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+                UIApplication.shared.beginReceivingRemoteControlEvents()
+                setupCommandCenter()
             } catch {
                 let err = error as NSError
                 if err.code == AVAudioSession.ErrorCode.insufficientPriority.rawValue ||
@@ -486,6 +490,12 @@ open class ZLCustomCamera: UIViewController {
         
         let pinchGes = UIPinchGestureRecognizer(target: self, action: #selector(pinchToAdjustCameraFocus(_:)))
         view.addGestureRecognizer(pinchGes)
+    }
+    
+    private func setupCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = false
+        commandCenter.pauseCommand.isEnabled = false
     }
     
     private func observerDeviceMotion() {
@@ -715,24 +725,20 @@ open class ZLCustomCamera: UIViewController {
     }
     
     private func restartSessionAndPreview() {
-        sessionQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            if self.session.isRunning {
-                self.session.stopRunning()
-            }
-            
-            usleep(300_000)
-            
-            self.session.startRunning()
-            
-            DispatchQueue.main.async {
-                if let previewLayer = self.previewLayer {
-                    previewLayer.frame = self.view.bounds
-                    if previewLayer.superlayer == nil {
-                        self.view.layer.insertSublayer(previewLayer, at: 0)
-                    }
+        if let player = recordVideoPlayerLayer?.player {
+            player.play()
+        } else {
+            sessionQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                if self.session.isRunning {
+                    self.session.stopRunning()
                 }
+                
+                usleep(300_000)
+                
+                self.session.startRunning()
+                self.resetSubViewStatus()
             }
         }
     }
