@@ -302,7 +302,7 @@ open class ZLCustomCamera: UIViewController {
         
         if cameraConfig.allowRecordVideo {
             do {
-                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .duckOthers)
+                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
                 try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
             } catch {
                 let err = error as NSError
@@ -326,11 +326,11 @@ open class ZLCustomCamera: UIViewController {
         if !UIImagePickerController.isSourceTypeAvailable(.camera) {
             showAlertAndDismissAfterDoneAction(message: localLanguageTextValue(.cameraUnavailable), type: .camera)
         } else if !cameraConfig.allowTakePhoto, !cameraConfig.allowRecordVideo {
-            #if DEBUG
-                fatalError("Error configuration of camera")
-            #else
-                showAlertAndDismissAfterDoneAction(message: "Error configuration of camera", type: nil)
-            #endif
+#if DEBUG
+            fatalError("Error configuration of camera")
+#else
+            showAlertAndDismissAfterDoneAction(message: "Error configuration of camera", type: nil)
+#endif
         } else if cameraConfigureFinish, viewDidAppearCount == 0 {
             showTipsLabel(message: cameraUsageTipsText())
             let animation = ZLAnimationUtils.animation(type: .fade, fromValue: 0, toValue: 1, duration: 0.15)
@@ -455,7 +455,7 @@ open class ZLCustomCamera: UIViewController {
                 largeCircleView.addGestureRecognizer(longGes)
                 takePictureTap?.require(toFail: longGes)
                 recordLongGes = longGes
-
+                
                 let panGes = UIPanGestureRecognizer(target: self, action: #selector(adjustCameraFocus(_:)))
                 panGes.delegate = self
                 panGes.maximumNumberOfTouches = 1
@@ -535,7 +535,7 @@ open class ZLCustomCamera: UIViewController {
         guard let input = try? AVCaptureDeviceInput(device: camera) else { return }
         
         session.beginConfiguration()
-        
+        session.automaticallyConfiguresApplicationAudioSession = false
         // 相机画面输入流
         videoInput = input
         
@@ -580,7 +580,7 @@ open class ZLCustomCamera: UIViewController {
             self.session.startRunning()
         }
     }
-
+    
     private func setInitialZoomFactor(for device: AVCaptureDevice) {
         guard isWideCameraEnabled() else { return }
         do {
@@ -629,20 +629,20 @@ open class ZLCustomCamera: UIViewController {
         } else {
             allDeviceTypes = deviceTypes
         }
-
+        
         let session = AVCaptureDevice.DiscoverySession(
             deviceTypes: allDeviceTypes,
             mediaType: .video,
             position: position
         )
-
+        
         if isWideCameraEnabled() {
             if let camera = findFirstDevice(ofTypes: extendedDeviceTypes, in: session) {
                 torchDevice = camera
                 return camera
             }
         }
-
+        
         for device in session.devices {
             if device.position == position {
                 return device
@@ -705,6 +705,38 @@ open class ZLCustomCamera: UIViewController {
             NotificationCenter.default.addObserver(self, selector: #selector(handleAudioSessionInterruption), name: AVAudioSession.interruptionNotification, object: nil)
         }
     }
+    
+    private func reactiveVideoAndAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false)
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
+        try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+        
+        restartSessionAndPreview()
+    }
+    
+    private func restartSessionAndPreview() {
+        sessionQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            if self.session.isRunning {
+                self.session.stopRunning()
+            }
+            
+            usleep(300_000)
+            
+            self.session.startRunning()
+            
+            DispatchQueue.main.async {
+                if let previewLayer = self.previewLayer {
+                    previewLayer.frame = self.view.bounds
+                    if previewLayer.superlayer == nil {
+                        self.view.layer.insertSublayer(previewLayer, at: 0)
+                    }
+                }
+            }
+        }
+    }
+    
     
     private func showNoMicrophoneAuthorityAlert() {
         let continueAction = ZLCustomAlertAction(title: localLanguageTextValue(.keepRecording), style: .default, handler: nil)
@@ -807,17 +839,25 @@ open class ZLCustomCamera: UIViewController {
     }
     
     @objc private func handleAudioSessionInterruption(_ notify: Notification) {
-        guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player else {
-            return
-        }
-        guard player.rate == 0 else {
+        guard let userInfo = notify.userInfo,
+              let interruptionTypeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let interruptionType = AVAudioSession.InterruptionType(rawValue: interruptionTypeValue) else {
             return
         }
         
-        let type = notify.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-        let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
-        if type == AVAudioSession.InterruptionType.ended.rawValue, option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
-            player.play()
+        switch interruptionType {
+        case .began:
+            reactiveVideoAndAudioSession()
+        case .ended:
+            guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player, player.rate == 0 else { return
+            }
+            
+            let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            if option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
+                player.play()
+            }
+        @unknown default:
+            break
         }
     }
     
@@ -935,7 +975,7 @@ open class ZLCustomCamera: UIViewController {
     @objc private func doneBtnClick() {
         recordVideoPlayerLayer?.player?.pause()
         // 置为nil会导致卡顿，先注释，不影响内存释放
-//        self.recordVideoPlayerLayer?.player = nil
+        //        self.recordVideoPlayerLayer?.player = nil
         dismiss(animated: true) {
             self.takeDoneBlock?(self.takedImage, self.videoURL)
         }
@@ -1195,7 +1235,7 @@ open class ZLCustomCamera: UIViewController {
         } else {
             connection?.videoOrientation = cacheVideoOrientation
         }
-            
+        
         if let connection = connection, connection.isVideoStabilizationSupported {
             connection.preferredVideoStabilizationMode = cameraConfig.videoStabilizationMode
         }
@@ -1237,7 +1277,7 @@ open class ZLCustomCamera: UIViewController {
         guard let movieFileOutput = movieFileOutput else {
             return
         }
-
+        
         guard movieFileOutput.isRecording else {
             return
         }
@@ -1439,7 +1479,7 @@ extension ZLCustomCamera: AVCaptureFileOutputRecordingDelegate {
                         self?.videoURL = nil
                         showAlertView(error.localizedDescription, self)
                     }
-
+                    
                     self?.recordURLs.forEach { try? FileManager.default.removeItem(at: $0) }
                     self?.recordURLs.removeAll()
                     self?.recordDurations.removeAll()
@@ -1473,7 +1513,7 @@ extension ZLCustomCamera: UIGestureRecognizerDelegate {
         
         let result = gesTuples.map { ges1, ges2 in
             (ges1 == gestureRecognizer && ges2 == otherGestureRecognizer) ||
-                (ges2 == otherGestureRecognizer && ges1 == gestureRecognizer)
+            (ges2 == otherGestureRecognizer && ges1 == gestureRecognizer)
         }.filter { $0 == true }
         
         return !result.isEmpty
