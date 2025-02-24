@@ -459,6 +459,7 @@ open class ZLCustomCamera: UIViewController {
                 largeCircleView.addGestureRecognizer(longGes)
                 takePictureTap?.require(toFail: longGes)
                 recordLongGes = longGes
+
                 let panGes = UIPanGestureRecognizer(target: self, action: #selector(adjustCameraFocus(_:)))
                 panGes.delegate = self
                 panGes.maximumNumberOfTouches = 1
@@ -490,13 +491,13 @@ open class ZLCustomCamera: UIViewController {
         let pinchGes = UIPinchGestureRecognizer(target: self, action: #selector(pinchToAdjustCameraFocus(_:)))
         view.addGestureRecognizer(pinchGes)
     }
-
+    
     private func setupCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
         commandCenter.playCommand.isEnabled = false
         commandCenter.pauseCommand.isEnabled = false
     }
-
+    
     private func observerDeviceMotion() {
         if !Thread.isMainThread {
             ZLMainAsync {
@@ -589,7 +590,7 @@ open class ZLCustomCamera: UIViewController {
             self.session.startRunning()
         }
     }
-    
+
     private func setInitialZoomFactor(for device: AVCaptureDevice) {
         guard isWideCameraEnabled() else { return }
         do {
@@ -638,17 +639,20 @@ open class ZLCustomCamera: UIViewController {
         } else {
             allDeviceTypes = deviceTypes
         }
+
         let session = AVCaptureDevice.DiscoverySession(
             deviceTypes: allDeviceTypes,
             mediaType: .video,
             position: position
         )
+
         if isWideCameraEnabled() {
             if let camera = findFirstDevice(ofTypes: extendedDeviceTypes, in: session) {
                 torchDevice = camera
                 return camera
             }
         }
+
         for device in session.devices {
             if device.position == position {
                 return device
@@ -716,12 +720,11 @@ open class ZLCustomCamera: UIViewController {
         try? AVAudioSession.sharedInstance().setActive(false)
         try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
         try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
-        
+
         restartSessionAndPreview()
     }
-    
+
     private func restartSessionAndPreview() {
-        
         if let player = recordVideoPlayerLayer?.player {
             player.play()
         } else {
@@ -731,9 +734,7 @@ open class ZLCustomCamera: UIViewController {
                 if self.session.isRunning {
                     self.session.stopRunning()
                 }
-                
                 usleep(300_000)
-                
                 self.session.startRunning()
                 self.resetSubViewStatus()
             }
@@ -844,7 +845,7 @@ open class ZLCustomCamera: UIViewController {
         guard let userInfo = notify.userInfo,
               let interruptionTypeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
               let interruptionType = AVAudioSession.InterruptionType(rawValue: interruptionTypeValue) else {
-            return
+                return
         }
         
         switch interruptionType {
@@ -1237,6 +1238,7 @@ open class ZLCustomCamera: UIViewController {
         } else {
             connection?.videoOrientation = cacheVideoOrientation
         }
+            
         if let connection = connection, connection.isVideoStabilizationSupported {
             connection.preferredVideoStabilizationMode = cameraConfig.videoStabilizationMode
         }
@@ -1278,6 +1280,7 @@ open class ZLCustomCamera: UIViewController {
         guard let movieFileOutput = movieFileOutput else {
             return
         }
+
         guard movieFileOutput.isRecording else {
             return
         }
@@ -1479,6 +1482,7 @@ extension ZLCustomCamera: AVCaptureFileOutputRecordingDelegate {
                         self?.videoURL = nil
                         showAlertView(error.localizedDescription, self)
                     }
+
                     self?.recordURLs.forEach { try? FileManager.default.removeItem(at: $0) }
                     self?.recordURLs.removeAll()
                     self?.recordDurations.removeAll()
@@ -1512,7 +1516,7 @@ extension ZLCustomCamera: UIGestureRecognizerDelegate {
         
         let result = gesTuples.map { ges1, ges2 in
             (ges1 == gestureRecognizer && ges2 == otherGestureRecognizer) ||
-            (ges2 == otherGestureRecognizer && ges1 == gestureRecognizer)
+                (ges2 == otherGestureRecognizer && ges1 == gestureRecognizer)
         }.filter { $0 == true }
         
         return !result.isEmpty
