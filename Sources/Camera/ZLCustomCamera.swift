@@ -330,11 +330,11 @@ open class ZLCustomCamera: UIViewController {
         if !UIImagePickerController.isSourceTypeAvailable(.camera) {
             showAlertAndDismissAfterDoneAction(message: localLanguageTextValue(.cameraUnavailable), type: .camera)
         } else if !cameraConfig.allowTakePhoto, !cameraConfig.allowRecordVideo {
-#if DEBUG
-            fatalError("Error configuration of camera")
-#else
-            showAlertAndDismissAfterDoneAction(message: "Error configuration of camera", type: nil)
-#endif
+            #if DEBUG
+                fatalError("Error configuration of camera")
+            #else
+                showAlertAndDismissAfterDoneAction(message: "Error configuration of camera", type: nil)
+            #endif
         } else if cameraConfigureFinish, viewDidAppearCount == 0 {
             showTipsLabel(message: cameraUsageTipsText())
             let animation = ZLAnimationUtils.animation(type: .fade, fromValue: 0, toValue: 1, duration: 0.15)
@@ -459,7 +459,6 @@ open class ZLCustomCamera: UIViewController {
                 largeCircleView.addGestureRecognizer(longGes)
                 takePictureTap?.require(toFail: longGes)
                 recordLongGes = longGes
-                
                 let panGes = UIPanGestureRecognizer(target: self, action: #selector(adjustCameraFocus(_:)))
                 panGes.delegate = self
                 panGes.maximumNumberOfTouches = 1
@@ -491,13 +490,13 @@ open class ZLCustomCamera: UIViewController {
         let pinchGes = UIPinchGestureRecognizer(target: self, action: #selector(pinchToAdjustCameraFocus(_:)))
         view.addGestureRecognizer(pinchGes)
     }
-    
+
     private func setupCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
         commandCenter.playCommand.isEnabled = false
         commandCenter.pauseCommand.isEnabled = false
     }
-    
+
     private func observerDeviceMotion() {
         if !Thread.isMainThread {
             ZLMainAsync {
@@ -639,20 +638,17 @@ open class ZLCustomCamera: UIViewController {
         } else {
             allDeviceTypes = deviceTypes
         }
-        
         let session = AVCaptureDevice.DiscoverySession(
             deviceTypes: allDeviceTypes,
             mediaType: .video,
             position: position
         )
-        
         if isWideCameraEnabled() {
             if let camera = findFirstDevice(ofTypes: extendedDeviceTypes, in: session) {
                 torchDevice = camera
                 return camera
             }
         }
-        
         for device in session.devices {
             if device.position == position {
                 return device
@@ -725,6 +721,7 @@ open class ZLCustomCamera: UIViewController {
     }
     
     private func restartSessionAndPreview() {
+        
         if let player = recordVideoPlayerLayer?.player {
             player.play()
         } else {
@@ -742,7 +739,6 @@ open class ZLCustomCamera: UIViewController {
             }
         }
     }
-    
     
     private func showNoMicrophoneAuthorityAlert() {
         let continueAction = ZLCustomAlertAction(title: localLanguageTextValue(.keepRecording), style: .default, handler: nil)
@@ -981,7 +977,7 @@ open class ZLCustomCamera: UIViewController {
     @objc private func doneBtnClick() {
         recordVideoPlayerLayer?.player?.pause()
         // 置为nil会导致卡顿，先注释，不影响内存释放
-        //        self.recordVideoPlayerLayer?.player = nil
+//        self.recordVideoPlayerLayer?.player = nil
         dismiss(animated: true) {
             self.takeDoneBlock?(self.takedImage, self.videoURL)
         }
@@ -1241,7 +1237,6 @@ open class ZLCustomCamera: UIViewController {
         } else {
             connection?.videoOrientation = cacheVideoOrientation
         }
-        
         if let connection = connection, connection.isVideoStabilizationSupported {
             connection.preferredVideoStabilizationMode = cameraConfig.videoStabilizationMode
         }
@@ -1283,7 +1278,6 @@ open class ZLCustomCamera: UIViewController {
         guard let movieFileOutput = movieFileOutput else {
             return
         }
-        
         guard movieFileOutput.isRecording else {
             return
         }
@@ -1485,7 +1479,6 @@ extension ZLCustomCamera: AVCaptureFileOutputRecordingDelegate {
                         self?.videoURL = nil
                         showAlertView(error.localizedDescription, self)
                     }
-                    
                     self?.recordURLs.forEach { try? FileManager.default.removeItem(at: $0) }
                     self?.recordURLs.removeAll()
                     self?.recordDurations.removeAll()
