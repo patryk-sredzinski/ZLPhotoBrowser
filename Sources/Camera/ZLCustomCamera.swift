@@ -27,6 +27,7 @@
 import UIKit
 import AVFoundation
 import CoreMotion
+import MediaPlayer
 
 open class ZLCustomCamera: UIViewController {
     public enum Layout {
@@ -256,6 +257,7 @@ open class ZLCustomCamera: UIViewController {
     deinit {
         zl_debugPrint("ZLCustomCamera deinit")
         cleanTimer()
+        UIApplication.shared.endReceivingRemoteControlEvents()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     
@@ -302,8 +304,10 @@ open class ZLCustomCamera: UIViewController {
         
         if cameraConfig.allowRecordVideo {
             do {
-                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .duckOthers)
+                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
                 try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+                UIApplication.shared.beginReceivingRemoteControlEvents()
+                setupCommandCenter()
             } catch {
                 let err = error as NSError
                 if err.code == AVAudioSession.ErrorCode.insufficientPriority.rawValue ||
@@ -486,6 +490,12 @@ open class ZLCustomCamera: UIViewController {
         
         let pinchGes = UIPinchGestureRecognizer(target: self, action: #selector(pinchToAdjustCameraFocus(_:)))
         view.addGestureRecognizer(pinchGes)
+    }
+    
+    private func setupCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = false
+        commandCenter.pauseCommand.isEnabled = false
     }
     
     private func observerDeviceMotion() {
@@ -706,6 +716,31 @@ open class ZLCustomCamera: UIViewController {
         }
     }
     
+    private func reactiveVideoAndAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false)
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
+        try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+
+        restartSessionAndPreview()
+    }
+
+    private func restartSessionAndPreview() {
+        if let player = recordVideoPlayerLayer?.player {
+            player.play()
+        } else {
+            sessionQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                if self.session.isRunning {
+                    self.session.stopRunning()
+                }
+                usleep(300_000)
+                self.session.startRunning()
+                self.resetSubViewStatus()
+            }
+        }
+    }
+    
     private func showNoMicrophoneAuthorityAlert() {
         let continueAction = ZLCustomAlertAction(title: localLanguageTextValue(.keepRecording), style: .default, handler: nil)
         let gotoSettingsAction = ZLCustomAlertAction(title: localLanguageTextValue(.gotoSettings), style: .tint) { _ in
@@ -807,17 +842,25 @@ open class ZLCustomCamera: UIViewController {
     }
     
     @objc private func handleAudioSessionInterruption(_ notify: Notification) {
-        guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player else {
-            return
-        }
-        guard player.rate == 0 else {
-            return
+        guard let userInfo = notify.userInfo,
+              let interruptionTypeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let interruptionType = AVAudioSession.InterruptionType(rawValue: interruptionTypeValue) else {
+                return
         }
         
-        let type = notify.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-        let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
-        if type == AVAudioSession.InterruptionType.ended.rawValue, option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
-            player.play()
+        switch interruptionType {
+        case .began:
+            reactiveVideoAndAudioSession()
+        case .ended:
+            guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player, player.rate == 0 else { return
+            }
+            
+            let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            if option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
+                player.play()
+            }
+        @unknown default:
+            break
         }
     }
     
