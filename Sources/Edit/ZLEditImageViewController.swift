@@ -92,13 +92,19 @@ public class ZLEditImageModel: NSObject {
 open class ZLEditImageViewController: UIViewController {
     static let maxDrawLineImageWidth: CGFloat = 600
     
-    static let shadowColorFrom = UIColor.black.withAlphaComponent(0.35).cgColor
+    static let shadowColorFrom = UIColor.black.cgColor
     
     static let shadowColorTo = UIColor.clear.cgColor
     
     static let ashbinSize = CGSize(width: 160, height: 80)
     
-    private let tools: [ZLEditImageConfiguration.EditTool]
+    private let allTools: [ZLEditImageConfiguration.EditTool]
+
+    private let basicTools: [ZLEditImageConfiguration.EditTool]
+    
+    private let moreTools: [ZLEditImageConfiguration.EditTool]
+   
+    private var tools: [ZLEditImageConfiguration.EditTool]
     
     private let adjustTools: [ZLEditImageConfiguration.AdjustTool]
     
@@ -284,11 +290,10 @@ open class ZLEditImageViewController: UIViewController {
         return shadowView
     }()
     
-    @objc public lazy var topShadowLayer: CAGradientLayer = {
-        let layer = CAGradientLayer()
-        layer.colors = [ZLEditImageViewController.shadowColorFrom, ZLEditImageViewController.shadowColorTo]
-        layer.locations = [0, 1]
-        return layer
+    @objc public lazy var topShadowBackground: UIView = {
+        let view = UIView()
+        view.backgroundColor = .black.withAlphaComponent(0.9)
+        return view
     }()
      
     // 下方渐变阴影层
@@ -300,11 +305,10 @@ open class ZLEditImageViewController: UIViewController {
         return shadowView
     }()
     
-    @objc public lazy var bottomShadowLayer: CAGradientLayer = {
-        let layer = CAGradientLayer()
-        layer.colors = [ZLEditImageViewController.shadowColorTo, ZLEditImageViewController.shadowColorFrom]
-        layer.locations = [0, 1]
-        return layer
+    @objc public lazy var bottomShadowBackground: UIView = {
+        let view = UIView()
+        view.backgroundColor = .black.withAlphaComponent(0.9)
+        return view
     }()
     
     @objc public lazy var doneBtn: UIButton = {
@@ -438,12 +442,14 @@ open class ZLEditImageViewController: UIViewController {
         cancel: (() -> Void)? = nil,
         completion: ((UIImage, ZLEditImageModel?) -> Void)?
     ) {
-        let tools = ZLPhotoConfiguration.default().editImageConfiguration.tools
+        let basicTools = ZLPhotoConfiguration.default().editImageConfiguration.tools
+        let moreTools = ZLPhotoConfiguration.default().editImageConfiguration.moreTools
+        let allTools = basicTools + moreTools
         let editConfig = ZLPhotoConfiguration.default().editImageConfiguration
         
         if editConfig.showClipDirectlyIfOnlyHasClipTool,
-           tools.count == 1,
-           tools.contains(.clip) {
+           allTools.count == 1,
+           allTools.contains(.clip) {
             let vc = ZLClipImageViewController(
                 image: image,
                 status: editModel?.clipStatus ?? ZLClipStatus(editRect: CGRect(origin: .zero, size: image.size))
@@ -498,7 +504,10 @@ open class ZLEditImageViewController: UIViewController {
         if ts.contains(.imageSticker), editConfig.imageStickerContainerView == nil {
             ts.removeAll { $0 == .imageSticker }
         }
-        tools = ts
+        basicTools = ts
+        moreTools = editConfig.moreTools
+        allTools = basicTools + moreTools
+        tools = basicTools
         adjustTools = editConfig.adjustTools
         selectedAdjustTool = editConfig.adjustTools.first
         editorManager = ZLEditorManager(actions: editModel?.actions ?? [])
@@ -527,7 +536,7 @@ open class ZLEditImageViewController: UIViewController {
         setupUI()
         
         rotationImageView()
-        if tools.contains(.filter) {
+        if allTools.contains(.filter) {
             generateFilterImages()
         }
     }
@@ -535,7 +544,7 @@ open class ZLEditImageViewController: UIViewController {
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        guard tools.contains(.draw) else { return }
+        guard allTools.contains(.draw) else { return }
         
         var size = drawingImageView.frame.size
         if shouldSwapSize {
@@ -567,8 +576,8 @@ open class ZLEditImageViewController: UIViewController {
         mainScrollView.frame = view.bounds
         resetContainerViewFrame()
         
-        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: 150)
-        topShadowLayer.frame = topShadowView.bounds
+        topShadowView.frame = CGRect(x: 0, y: 0, width: view.zl.width, height: insets.top + 30 + 8)
+        topShadowBackground.frame = topShadowView.bounds
         let cancelBtnW = localLanguageTextValue(.cancel)
             .zl.boundingRect(
                 font: ZLLayout.bottomToolTitleFont,
@@ -585,7 +594,6 @@ open class ZLEditImageViewController: UIViewController {
         }
         
         bottomShadowView.frame = CGRect(x: 0, y: view.zl.height - 150 - insets.bottom, width: view.zl.width, height: 150 + insets.bottom)
-        bottomShadowLayer.frame = bottomShadowView.bounds
         
         eraserBtn.frame = CGRect(x: 20, y: 30 + (drawColViewH - 36) / 2, width: 36, height: 36)
         eraserBtnBgBlurView.frame = eraserBtn.frame
@@ -634,12 +642,9 @@ open class ZLEditImageViewController: UIViewController {
         if ZLPhotoUIConfiguration.default().shouldCenterTools {
             let editToolLayout = editToolCollectionView.collectionViewLayout as? ZLCollectionViewFlowLayout
             let itemSize = editToolLayout?.itemSize.width ?? 0
-            let itemSpacing = editToolLayout?.minimumInteritemSpacing ?? 0
-            let sideInset = (editToolWidth - CGFloat(tools.count) * (itemSize + itemSpacing) + itemSpacing) / 2.0
-            if sideInset > 0 {
-                editToolCollectionView.contentInset.left = sideInset
-                editToolCollectionView.contentInset.right = sideInset
-            }
+            let itemRequiredSpace = itemSize * CGFloat(tools.count)
+            let availableSpace = editToolWidth - itemRequiredSpace
+            editToolLayout?.minimumLineSpacing = availableSpace / (max(1, CGFloat(tools.count) - 1))
         }
         
         if !drawPaths.isEmpty {
@@ -658,6 +663,8 @@ open class ZLEditImageViewController: UIViewController {
         if abs(contentRatio - screenRatio) < 0.01 {
             mainScrollView.setZoomScale(mainScrollView.minimumZoomScale, animated: true)
         }
+        
+        resetBottomShadowBackgroundFrame()
     }
     
     override open func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
@@ -755,6 +762,16 @@ open class ZLEditImageViewController: UIViewController {
         isScrolling = false
     }
     
+    private func resetBottomShadowBackgroundFrame() {
+        let bottomSubviews = bottomShadowView.subviews
+        let visibleSubviews = bottomSubviews.filter { $0.isHidden == false && $0.alpha == 1 && $0 != bottomShadowBackground}
+        let yOffsets = visibleSubviews.map { $0.frame.minY }
+        let minimumOffset = yOffsets.min() ?? 0
+        let shadowViewSize = bottomShadowView.bounds.size
+        let newHeight = shadowViewSize.height - minimumOffset + 8
+        bottomShadowBackground.frame = CGRect(origin: CGPoint(x: 0, y: minimumOffset - 8), size: CGSize(width: shadowViewSize.width, height: newHeight))
+    }
+    
     private func setupUI() {
         view.backgroundColor = .black
         
@@ -764,18 +781,18 @@ open class ZLEditImageViewController: UIViewController {
         containerView.addSubview(drawingImageView)
         containerView.addSubview(stickersContainer)
         
-        topShadowView.layer.addSublayer(topShadowLayer)
+        topShadowView.addSubview(topShadowBackground)
         view.addSubview(topShadowView)
         topShadowView.addSubview(cancelBtn)
         topShadowView.addSubview(undoBtn)
         topShadowView.addSubview(redoBtn)
         
-        bottomShadowView.layer.addSublayer(bottomShadowLayer)
+        bottomShadowView.addSubview(bottomShadowBackground)
         view.addSubview(bottomShadowView)
         bottomShadowView.addSubview(editToolCollectionView)
         bottomShadowView.addSubview(doneBtn)
         
-        if tools.contains(.draw) {
+        if allTools.contains(.draw) {
             bottomShadowView.addSubview(eraserBtnBgBlurView)
             bottomShadowView.addSubview(eraserBtn)
             bottomShadowView.addSubview(eraserLineView)
@@ -803,7 +820,7 @@ open class ZLEditImageViewController: UIViewController {
             drawColorCollectionView = drawCV
         }
         
-        if tools.contains(.filter) {
+        if allTools.contains(.filter) {
             if let applier = currentFilter.applier {
                 let image = applier(originalImage)
                 editImage = image
@@ -829,7 +846,7 @@ open class ZLEditImageViewController: UIViewController {
             filterCollectionView = filterCV
         }
         
-        if tools.contains(.adjust) {
+        if allTools.contains(.adjust) {
             editImage = editImage.zl.adjust(
                 brightness: currentAdjustStatus.brightness,
                 contrast: currentAdjustStatus.contrast,
@@ -887,7 +904,7 @@ open class ZLEditImageViewController: UIViewController {
         asbinTipLabel.lineBreakMode = .byCharWrapping
         ashbinView.addSubview(asbinTipLabel)
         
-        if tools.contains(.mosaic) {
+        if allTools.contains(.mosaic) {
             mosaicImage = editImage.zl.mosaicImage()
             
             mosaicImageLayer = CALayer()
@@ -904,7 +921,7 @@ open class ZLEditImageViewController: UIViewController {
             mosaicImageLayer?.mask = mosaicImageLayerMaskLayer
         }
         
-        if tools.contains(.imageSticker) {
+        if allTools.contains(.imageSticker) {
             let imageStickerView = ZLPhotoConfiguration.default().editImageConfiguration.imageStickerContainerView
             imageStickerView?.hideBlock = { [weak self] in
                 self?.setToolView(show: true)
@@ -963,6 +980,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: !isSelected)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     @objc private func eraserBtnClick() {
@@ -1017,6 +1035,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func clipImage(status: ZLClipStatus) {
@@ -1042,6 +1061,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func textStickerBtnClick() {
@@ -1056,6 +1076,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func mosaicBtnClick() {
@@ -1070,6 +1091,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func filterBtnClick() {
@@ -1083,6 +1105,7 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: !isSelected)
         setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func adjustBtnClick() {
@@ -1097,6 +1120,20 @@ open class ZLEditImageViewController: UIViewController {
         setDrawViews(hidden: true)
         setFilterViews(hidden: true)
         setAdjustViews(hidden: !isSelected)
+        resetBottomShadowBackgroundFrame()
+    }
+    
+    private func moreBtnClick() {
+        if tools == basicTools {
+            tools = moreTools
+        } else {
+            tools = basicTools
+        }
+        selectedTool = nil
+        setDrawViews(hidden: true)
+        setFilterViews(hidden: true)
+        setAdjustViews(hidden: true)
+        resetBottomShadowBackgroundFrame()
     }
     
     private func setDrawViews(hidden: Bool) {
@@ -1917,6 +1954,7 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
     }
     
     public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        var shouldScroll = true
         if collectionView == editToolCollectionView {
             let toolType = tools[indexPath.row]
             switch toolType {
@@ -1934,6 +1972,9 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                 filterBtnClick()
             case .adjust:
                 adjustBtnClick()
+            case .more, .back:
+                moreBtnClick()
+                shouldScroll = false
             }
         } else if collectionView == drawColorCollectionView {
             currentDrawColor = drawColors[indexPath.row]
@@ -1948,7 +1989,9 @@ extension ZLEditImageViewController: UICollectionViewDataSource, UICollectionVie
                 changeAdjustTool(tool)
             }
         }
-        collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+        if shouldScroll {
+            collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
+        }
         collectionView.reloadData()
     }
 }

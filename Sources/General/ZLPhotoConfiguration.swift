@@ -156,7 +156,7 @@ public class ZLPhotoConfiguration: NSObject {
     /// After selecting a image/video in the thumbnail interface, enter the editing interface directly. Defaults to false.
     /// - discussion: Editing image is only valid when allowEditImage is true and maxSelectCount is 1.
     /// Editing video is only valid when allowEditVideo is true and maxSelectCount is 1.
-    public var editAfterSelectThumbnailImage = false
+    public var editAfterSelectThumbnailImage = true
     
     /// Only valid when allowMixSelect is false and allowEditVideo is true. Defaults to true.
     /// Just like the Wechat-Timeline selection style. If you want to crop the video after select thumbnail under allowMixSelect = true, please use **editAfterSelectThumbnailImage**.

@@ -50,14 +50,14 @@ public class ZLEditImageConfiguration: NSObject {
         .zl.rgba(127, 127, 127)
     ]
     
-    private var pri_tools: [ZLEditImageConfiguration.EditTool] = ZLEditImageConfiguration.EditTool.allCases
+    private var pri_tools: [ZLEditImageConfiguration.EditTool] = [.clip, .draw, .textSticker, .more]
     /// Edit image tools. (Default order is draw, clip, imageSticker, textSticker, mosaic, filtter)
     /// Because Objective-C Array can't contain Enum styles, so this property is invalid in Objective-C.
     /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
     public var tools: [ZLEditImageConfiguration.EditTool] {
         get {
             if pri_tools.isEmpty {
-                return ZLEditImageConfiguration.EditTool.allCases
+                return [.clip, .draw, .textSticker, .more]
             } else {
                 return pri_tools
             }
@@ -72,6 +72,27 @@ public class ZLEditImageConfiguration: NSObject {
     public var tools_objc: [Int] = [] {
         didSet {
             tools = tools_objc.compactMap { ZLEditImageConfiguration.EditTool(rawValue: $0) }
+        }
+    }
+    
+    private var pri_more_tools: [ZLEditImageConfiguration.EditTool] = [.back, .filter, .mosaic, .adjust]
+    /// Edit image additional tools. (Default order is draw, clip, imageSticker, textSticker, mosaic, filtter)
+    /// Because Objective-C Array can't contain Enum styles, so this property is invalid in Objective-C.
+    /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
+    public var moreTools: [ZLEditImageConfiguration.EditTool] {
+        get {
+            return pri_more_tools
+        }
+        set {
+            pri_more_tools = newValue
+        }
+    }
+    
+    /// Edit image tools.  (This property is only for objc).
+    /// - warning: If you want to use the image sticker feature, you must provide a view that implements ZLImageStickerContainerDelegate.
+    public var _more_tools_objc: [Int] = [] {
+        didSet {
+            moreTools = _more_tools_objc.compactMap { ZLEditImageConfiguration.EditTool(rawValue: $0) }
         }
     }
     
@@ -196,6 +217,8 @@ public extension ZLEditImageConfiguration {
         case mosaic
         case filter
         case adjust
+        case more
+        case back
     }
     
     @objc enum AdjustTool: Int, CaseIterable {

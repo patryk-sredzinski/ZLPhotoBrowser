@@ -425,10 +425,6 @@ public extension ZLPhotoBrowserWrapper where Base: UIImage {
         let temp = UIGraphicsImageRenderer.zl.renderImage(size: editRect.size) { format in
             format.scale = newImage.scale
         } imageActions: { context in
-            if isCircle {
-                context.addEllipse(in: CGRect(origin: .zero, size: editRect.size))
-                context.clip()
-            }
             newImage.draw(at: origin)
         }
         
