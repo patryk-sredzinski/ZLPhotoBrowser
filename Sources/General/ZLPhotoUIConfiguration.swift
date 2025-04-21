@@ -64,7 +64,7 @@ public class ZLPhotoUIConfiguration: NSObject {
     public var hudStyle: ZLProgressHUD.Style = .dark
     
     /// Adjust Slider Type
-    public var adjustSliderType: ZLAdjustSliderType = .vertical
+    public var adjustSliderType: ZLAdjustSliderType = .horizontal
     
     public var cellCornerRadio: CGFloat = 0
     
@@ -137,7 +137,7 @@ public class ZLPhotoUIConfiguration: NSObject {
     public var showEnterSettingTips = true
 
     /// Center tools in tools bar. Defaults to false.
-    public var shouldCenterTools = false
+    public var shouldCenterTools = true
 
     /// Timeout for image parsing. Defaults to 20.
     public var timeout: TimeInterval = 20

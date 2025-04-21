@@ -27,6 +27,7 @@
 import UIKit
 import AVFoundation
 import CoreMotion
+import MediaPlayer
 
 open class ZLCustomCamera: UIViewController {
     public enum Layout {
@@ -273,6 +274,7 @@ open class ZLCustomCamera: UIViewController {
         zl_debugPrint("ZLCustomCamera deinit")
         cleanAutoStopTimer()
         cleanTimer()
+        UIApplication.shared.endReceivingRemoteControlEvents()
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
     
@@ -311,7 +313,7 @@ open class ZLCustomCamera: UIViewController {
                 self.addNotification()
                 if !audioGranted {
                     ZLMainAsync(after: 1) {
-                        self.shownoMicrophoneAuthorityAlertMessageAlert()
+                        self.showNoMicrophoneAuthorityAlert()
                     }
                 }
             }
@@ -319,8 +321,10 @@ open class ZLCustomCamera: UIViewController {
         
         if cameraConfig.allowRecordVideo {
             do {
-                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .duckOthers)
+                try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
                 try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+                UIApplication.shared.beginReceivingRemoteControlEvents()
+                setupCommandCenter()
             } catch {
                 let err = error as NSError
                 if err.code == AVAudioSession.ErrorCode.insufficientPriority.rawValue ||
@@ -505,6 +509,12 @@ open class ZLCustomCamera: UIViewController {
         view.addGestureRecognizer(pinchGes)
     }
     
+    private func setupCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.playCommand.isEnabled = false
+        commandCenter.pauseCommand.isEnabled = false
+    }
+    
     private func observerDeviceMotion() {
         if !Thread.isMainThread {
             ZLMainAsync {
@@ -552,7 +562,7 @@ open class ZLCustomCamera: UIViewController {
         guard let input = try? AVCaptureDeviceInput(device: camera) else { return }
         
         session.beginConfiguration()
-        
+        session.automaticallyConfiguresApplicationAudioSession = false
         // 相机画面输入流
         videoInput = input
         
@@ -723,7 +733,32 @@ open class ZLCustomCamera: UIViewController {
         }
     }
     
-    private func shownoMicrophoneAuthorityAlertMessageAlert() {
+    private func reactiveVideoAndAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false)
+        try? AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .videoRecording, options: .defaultToSpeaker)
+        try? AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+
+        restartSessionAndPreview()
+    }
+
+    private func restartSessionAndPreview() {
+        if let player = recordVideoPlayerLayer?.player {
+            player.play()
+        } else {
+            sessionQueue.async { [weak self] in
+                guard let self = self else { return }
+                
+                if self.session.isRunning {
+                    self.session.stopRunning()
+                }
+                usleep(300_000)
+                self.session.startRunning()
+                self.resetSubViewStatus()
+            }
+        }
+    }
+    
+    private func showNoMicrophoneAuthorityAlert() {
         let continueAction = ZLCustomAlertAction(title: localLanguageTextValue(.keepRecording), style: .default, handler: nil)
         let gotoSettingsAction = ZLCustomAlertAction(title: localLanguageTextValue(.gotoSettings), style: .tint) { _ in
             guard let url = URL(string: UIApplication.openSettingsURLString) else {
@@ -835,17 +870,25 @@ open class ZLCustomCamera: UIViewController {
     }
     
     @objc private func handleAudioSessionInterruption(_ notify: Notification) {
-        guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player else {
-            return
-        }
-        guard player.rate == 0 else {
-            return
+        guard let userInfo = notify.userInfo,
+              let interruptionTypeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let interruptionType = AVAudioSession.InterruptionType(rawValue: interruptionTypeValue) else {
+                return
         }
         
-        let type = notify.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-        let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
-        if type == AVAudioSession.InterruptionType.ended.rawValue, option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
-            player.play()
+        switch interruptionType {
+        case .began:
+            reactiveVideoAndAudioSession()
+        case .ended:
+            guard recordVideoPlayerLayer?.isHidden == false, let player = recordVideoPlayerLayer?.player, player.rate == 0 else { return
+            }
+            
+            let option = notify.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt
+            if option == AVAudioSession.InterruptionOptions.shouldResume.rawValue {
+                player.play()
+            }
+        @unknown default:
+            break
         }
     }
     
@@ -1241,7 +1284,6 @@ open class ZLCustomCamera: UIViewController {
         } else {
             connection?.videoOrientation = cacheVideoOrientation
         }
-        
         if let connection = connection, connection.isVideoStabilizationSupported, videoInput?.device.position == .back {
             connection.preferredVideoStabilizationMode = cameraConfig.videoStabilizationMode
         }
